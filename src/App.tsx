@@ -1,22 +1,48 @@
-import { useState } from 'react'
-import type { Category, Difficulty } from './types'
+import { useEffect, useState } from 'react'
+import { Capacitor } from '@capacitor/core'
+import { App as CapApp } from '@capacitor/app'
+import { StatusBar, Style } from '@capacitor/status-bar'
+import type { Category, Difficulty, LastSession, SessionMode, SessionResult } from './types'
+import { APP_NAME } from './constants'
 import { useProgress } from './hooks/useProgress'
+import { useSettings } from './hooks/useSettings'
 import { HomeScreen } from './components/HomeScreen'
 import { PuzzleGame } from './components/PuzzleGame'
+import { ResultsScreen } from './components/ResultsScreen'
+import { SettingsScreen } from './components/SettingsScreen'
+import { LegalPage } from './components/LegalPage'
 import './App.css'
 
-type Screen = 'home' | 'play'
+type Screen =
+  | 'home'
+  | 'play'
+  | 'results'
+  | 'settings'
+  | 'privacy'
+  | 'terms'
+  | 'about'
+  | 'contact'
 
 interface PlayConfig {
   category: Category | 'all'
   difficulty: Difficulty
+  mode: SessionMode
+  resume?: boolean
+  retryIds?: number[]
 }
 
 function App() {
   const {
     progress,
+    lastSession,
+    reportedQuestions,
     completePuzzle,
     resetProgress,
+    saveSession,
+    clearLastSession,
+    reportQuestion,
+    exportProgress,
+    importProgress,
     easyCompleted,
     mediumCompleted,
     isDifficultyUnlocked,
@@ -24,23 +50,103 @@ function App() {
     totalPuzzles,
   } = useProgress()
 
+  const { settings, updateSetting } = useSettings()
+
   const [screen, setScreen] = useState<Screen>('home')
   const [playConfig, setPlayConfig] = useState<PlayConfig | null>(null)
+  const [sessionResult, setSessionResult] = useState<SessionResult | null>(null)
+  const [resumeSession, setResumeSession] = useState<LastSession | null>(null)
 
-  const handleStart = (category: Category | 'all', difficulty: Difficulty) => {
-    setPlayConfig({ category, difficulty })
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return
+    StatusBar.setStyle({ style: Style.Dark }).catch(() => undefined)
+    StatusBar.setBackgroundColor({ color: '#0f1117' }).catch(() => undefined)
+
+    const sub = CapApp.addListener('backButton', ({ canGoBack }) => {
+      if (screen !== 'home') {
+        if (screen === 'play') {
+          if (window.confirm('Leave this session? Progress in this session will be saved.')) {
+            setPlayConfig(null)
+            setResumeSession(null)
+            setScreen('home')
+          }
+        } else {
+          setScreen('home')
+        }
+        return
+      }
+      if (canGoBack) CapApp.exitApp()
+    })
+
+    return () => {
+      sub.then((handle) => handle.remove())
+    }
+  }, [screen])
+
+  const handleStart = (config: PlayConfig) => {
+    setSessionResult(null)
+    setPlayConfig(config)
+    setResumeSession(config.resume ? lastSession : null)
     setScreen('play')
   }
 
-  const handleExit = () => {
+  const handleFinish = (result: SessionResult) => {
+    clearLastSession()
+    setSessionResult(result)
     setPlayConfig(null)
+    setResumeSession(null)
+    setScreen('results')
+  }
+
+  const handleExitPlay = () => {
+    setPlayConfig(null)
+    setResumeSession(null)
     setScreen('home')
   }
 
-  const handleReset = () => {
-    if (window.confirm('Reset all progress? This cannot be undone.')) {
-      resetProgress()
+  const handlePlayAgain = () => {
+    if (!sessionResult) return
+    handleStart({
+      category: sessionResult.category,
+      difficulty: sessionResult.difficulty,
+      mode: sessionResult.mode,
+    })
+  }
+
+  const handleRetryWrong = () => {
+    if (!sessionResult) return
+    handleStart({
+      category: sessionResult.category,
+      difficulty: sessionResult.difficulty,
+      mode: 'quick',
+      retryIds: sessionResult.wrongPuzzleIds,
+    })
+  }
+
+  const handleShare = async () => {
+    if (!sessionResult) return
+    const text = `${APP_NAME}: ${sessionResult.correct}/${sessionResult.total} correct (${sessionResult.accuracy}% accuracy) in ${sessionResult.mode} mode!`
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: APP_NAME, text })
+        return
+      } catch {
+        /* fall through */
+      }
     }
+    try {
+      await navigator.clipboard.writeText(text)
+      window.alert('Score copied to clipboard.')
+    } catch {
+      window.alert(text)
+    }
+  }
+
+  const goHome = () => {
+    setPlayConfig(null)
+    setResumeSession(null)
+    setSessionResult(null)
+    setScreen('home')
   }
 
   if (screen === 'play' && playConfig) {
@@ -48,12 +154,50 @@ function App() {
       <PuzzleGame
         category={playConfig.category}
         difficulty={playConfig.difficulty}
+        mode={playConfig.mode}
         completedIds={progress.completed}
         streak={progress.streak}
+        settings={settings}
+        resumeSession={resumeSession}
+        retryIds={playConfig.retryIds}
         onComplete={completePuzzle}
-        onExit={handleExit}
+        onSessionUpdate={saveSession}
+        onFinish={handleFinish}
+        onExit={handleExitPlay}
+        onReport={reportQuestion}
+        reportedQuestions={reportedQuestions}
       />
     )
+  }
+
+  if (screen === 'results' && sessionResult) {
+    return (
+      <ResultsScreen
+        result={sessionResult}
+        onHome={goHome}
+        onPlayAgain={handlePlayAgain}
+        onRetryWrong={handleRetryWrong}
+        onShare={handleShare}
+      />
+    )
+  }
+
+  if (screen === 'settings') {
+    return (
+      <SettingsScreen
+        settings={settings}
+        onUpdate={updateSetting}
+        onResetProgress={resetProgress}
+        onExportProgress={exportProgress}
+        onImportProgress={importProgress}
+        onOpenLegal={(page) => setScreen(page)}
+        onBack={goHome}
+      />
+    )
+  }
+
+  if (screen === 'privacy' || screen === 'terms' || screen === 'about' || screen === 'contact') {
+    return <LegalPage type={screen} onBack={() => setScreen('settings')} />
   }
 
   return (
@@ -65,9 +209,10 @@ function App() {
       bestStreak={progress.bestStreak}
       easyCompleted={easyCompleted}
       mediumCompleted={mediumCompleted}
+      lastSession={lastSession}
       isDifficultyUnlocked={isDifficultyUnlocked}
       onStart={handleStart}
-      onReset={handleReset}
+      onOpenSettings={() => setScreen('settings')}
     />
   )
 }

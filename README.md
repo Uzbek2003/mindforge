@@ -1,83 +1,78 @@
-# MindForge
+# QuizNova
 
-A free, ad-free puzzle app with **100 puzzles** across math, science, history, and computer science — designed for ages 7 to 35.
+Educational puzzle and trivia app for general audiences — 100 free questions across Math, Science, History, and Computer Science.
+
+> **Not ready for store submission yet.** See [Pre-publish checklist](#pre-publish-checklist) below.
 
 ## Features
 
-- **4 topics**: Math, Science, History, Computer Science (25 puzzles each)
-- **3 difficulty levels**: Easy (free), Medium, Hard (unlock by completing puzzles)
-- **Progress tracking**: Saved locally in your browser
-- **Hints & explanations**: Learn from every answer
-- **No ads, no accounts**: 100% free
+- 100 puzzles in 4 categories with Easy / Medium / Hard progression
+- Session modes: Quick (5), Standard (10), Challenge (20), Full, Endless, Daily Challenge
+- Results screen with accuracy, streak, time, retry incorrect, share score
+- Hints, explanations, report-question button
+- Settings: sound, vibration, large text, reduce animations, export/import progress
+- In-app Privacy Policy, Terms, About, Contact
+- Offline-capable mobile build via Capacitor
+- No ads, no account required
 
-## Getting started
+## Development
 
 ```bash
 npm install
 npm run dev
 ```
 
-Open the URL shown in the terminal (usually `http://localhost:5173`).
+## Production build
 
-## Deploy publicly
+```bash
+npm run build
+npm run preview
+```
 
-MindForge is a static site — deploy the `dist` folder to any host below.
+## Android (Capacitor)
 
-### Option 1: Vercel (recommended, ~2 minutes)
+```bash
+npm run cap:sync          # build web + sync to android/
+npm run cap:android       # open Android Studio
+```
 
-1. Push this project to GitHub (see below).
-2. Go to [vercel.com/new](https://vercel.com/new) and import the repo.
-3. Vercel auto-detects Vite — click **Deploy**. No config changes needed.
+Package ID: `com.uzbek2003.quiznova`
 
-Or from the terminal (after [installing Vercel CLI](https://vercel.com/docs/cli)):
+## Deploy web version
+
+Deploy the `dist/` folder to Vercel, Netlify, or GitHub Pages. A standalone privacy policy for store URLs lives at `/privacy.html`.
 
 ```bash
 npm run deploy:vercel
 ```
 
-### Option 2: Netlify
+Privacy policy URL (after deploy): `https://your-domain.com/privacy.html`
 
-1. Push to GitHub, then go to [app.netlify.com/start](https://app.netlify.com/start).
-2. Import the repo — `netlify.toml` is already configured.
+## Pre-publish checklist
 
-Or via CLI:
+| Item | Status |
+|------|--------|
+| Rename from MindForge | Done → **QuizNova** |
+| Remove age 7–35 marketing | Done |
+| Privacy policy (in-app + web) | Done |
+| Terms, About, Contact | Done |
+| Session modes + results screen | Done |
+| Settings screen | Done |
+| Answer feedback improvements | Done |
+| Export/import progress | Done |
+| Report incorrect question | Done |
+| Android back button | Done |
+| Haptics + sound toggles | Done |
+| Manual review of all 100 questions | **You must do this** |
+| Custom app icon + splash (store quality) | Partial — basic icon only |
+| Play Store / App Store screenshots | **Not done** |
+| Real-device Android QA | **You must test** |
+| Support email configured | Placeholder: support@quiznova.app |
 
-```bash
-npm run deploy:netlify
-```
+## Support
 
-### Option 3: GitHub Pages
+Email: support@quiznova.app
 
-1. Push to GitHub on the `main` branch.
-2. In the repo: **Settings → Pages → Build and deployment → Source → GitHub Actions**.
-3. Push to `main` — the included workflow deploys automatically.
+## License
 
-Your site will be at `https://<username>.github.io/mindforge/`.
-
-### Push to GitHub (first time)
-
-Install [Git](https://git-scm.com/download/win), then:
-
-```bash
-cd C:\Users\shakh\Projects\mindforge
-git init
-git add .
-git commit -m "Initial commit: MindForge puzzle app"
-gh repo create mindforge --public --source=. --push
-```
-
-If you don't have GitHub CLI (`gh`), create a repo at [github.com/new](https://github.com/new) named `mindforge`, then:
-
-```bash
-git remote add origin https://github.com/<your-username>/mindforge.git
-git branch -M main
-git push -u origin main
-```
-
-## Unlock rules
-
-- **Easy** — available immediately
-- **Medium** — unlock after completing 15 easy puzzles
-- **Hard** — unlock after completing 15 medium puzzles
-
-Progress is stored in `localStorage` under the key `mindforge-progress`.
+Private — all rights reserved.

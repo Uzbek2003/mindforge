@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">QuizNova</string>
+    <string name="title_activity_main">QuizNova</string>
+    <string name="package_name">com.uzbek2003.quiznova</string>
+    <string name="custom_url_scheme">com.uzbek2003.quiznova</string>
+</resources>
