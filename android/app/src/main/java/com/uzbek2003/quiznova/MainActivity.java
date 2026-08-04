@@ -1,4 +1,4 @@
-package com.uzbek2003.mindforge;
+package com.uzbek2003.quiznova;
 
 import com.getcapacitor.BridgeActivity;
 

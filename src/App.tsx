@@ -11,6 +11,7 @@ import { PuzzleGame } from './components/PuzzleGame'
 import { ResultsScreen } from './components/ResultsScreen'
 import { SettingsScreen } from './components/SettingsScreen'
 import { LegalPage } from './components/LegalPage'
+import { legalPathToScreen, screenToLegalPath } from './utils/routes'
 import './App.css'
 
 type Screen =
@@ -56,6 +57,33 @@ function App() {
   const [playConfig, setPlayConfig] = useState<PlayConfig | null>(null)
   const [sessionResult, setSessionResult] = useState<SessionResult | null>(null)
   const [resumeSession, setResumeSession] = useState<LastSession | null>(null)
+  const [legalFromSettings, setLegalFromSettings] = useState(false)
+
+  useEffect(() => {
+    const legalScreen = legalPathToScreen(window.location.pathname)
+    if (legalScreen) setScreen(legalScreen)
+  }, [])
+
+  useEffect(() => {
+    const onPopState = () => {
+      const legalScreen = legalPathToScreen(window.location.pathname)
+      if (legalScreen) {
+        setScreen(legalScreen)
+        return
+      }
+      if (window.location.pathname === '/' || window.location.pathname === '') {
+        setScreen('home')
+      }
+    }
+    window.addEventListener('popstate', onPopState)
+    return () => window.removeEventListener('popstate', onPopState)
+  }, [])
+
+  const openLegal = (page: 'privacy' | 'terms' | 'about' | 'contact') => {
+    setLegalFromSettings(true)
+    window.history.pushState(null, '', screenToLegalPath(page))
+    setScreen(page)
+  }
 
   useEffect(() => {
     if (!Capacitor.isNativePlatform()) return
@@ -146,6 +174,7 @@ function App() {
     setPlayConfig(null)
     setResumeSession(null)
     setSessionResult(null)
+    window.history.pushState(null, '', '/')
     setScreen('home')
   }
 
@@ -190,14 +219,23 @@ function App() {
         onResetProgress={resetProgress}
         onExportProgress={exportProgress}
         onImportProgress={importProgress}
-        onOpenLegal={(page) => setScreen(page)}
+        onOpenLegal={openLegal}
         onBack={goHome}
       />
     )
   }
 
   if (screen === 'privacy' || screen === 'terms' || screen === 'about' || screen === 'contact') {
-    return <LegalPage type={screen} onBack={() => setScreen('settings')} />
+    return (
+      <LegalPage
+        type={screen}
+        onBack={() => {
+          window.history.pushState(null, '', '/')
+          setScreen(legalFromSettings ? 'settings' : 'home')
+          setLegalFromSettings(false)
+        }}
+      />
+    )
   }
 
   return (

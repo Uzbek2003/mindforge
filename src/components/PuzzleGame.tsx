@@ -2,9 +2,10 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import type { AppSettings, Category, Difficulty, LastSession, Puzzle, SessionAnswer, SessionMode, SessionResult } from '../types'
 import { getPuzzleById } from '../data'
 import { CATEGORY_LABELS, DIFFICULTY_LABELS, SESSION_MODE_CONFIG } from '../types'
-import { buildSessionQueue, calcSessionStreak } from '../utils/session'
+import { buildSessionQueue, buildEndlessExtension, calcSessionStreak } from '../utils/session'
 import { hapticError, hapticSuccess } from '../utils/haptics'
 import { playCorrectSound, playWrongSound } from '../utils/sounds'
+import { buildQuestionReportEmail } from '../utils/report'
 import { Header } from './UI'
 
 interface PuzzleGameProps {
@@ -131,15 +132,15 @@ export function PuzzleGame({
     setReported(false)
 
     if (isEndless && index >= puzzleQueue.length - 1) {
-      const more = buildSessionQueue({
-        category: 'all',
-        difficulty: 'easy',
-        mode: 'endless',
-        completedIds,
-      }).filter((p) => !puzzleQueue.some((existing) => existing.id === p.id))
-      if (more.length > 0) {
-        setPuzzleQueue((queue) => [...queue, ...more])
+      const seenIds = new Set(puzzleQueue.map((p) => p.id))
+      const more = buildEndlessExtension(seenIds)
+
+      if (more.length === 0) {
+        finishSession(sessionAnswers)
+        return
       }
+
+      setPuzzleQueue((queue) => [...queue, ...more])
       setIndex((i) => i + 1)
       setSelected(null)
       setShowHint(false)
@@ -158,10 +159,11 @@ export function PuzzleGame({
     }
 
     finishSession(sessionAnswers)
-  }, [finishSession, index, isEndless, puzzleQueue.length, sessionAnswers])
+  }, [finishSession, index, isEndless, puzzleQueue, sessionAnswers])
 
   const handleReport = () => {
     if (!displayPuzzle || reported) return
+    window.location.href = buildQuestionReportEmail(displayPuzzle, selected)
     onReport(displayPuzzle.id)
     setReported(true)
   }

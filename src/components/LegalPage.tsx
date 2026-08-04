@@ -154,8 +154,8 @@ export function LegalPage({ type, onBack }: LegalPageProps) {
             <section>
               <h3>Report a question</h3>
               <p>
-                During gameplay, tap &quot;Report incorrect question&quot; on any puzzle you believe
-                contains an error. Reports are saved locally on your device.
+                During gameplay, tap &quot;Report incorrect question&quot; to open your email app with
+                the puzzle ID, question, selected answer, and correct answer prefilled.
               </p>
             </section>
             <section>

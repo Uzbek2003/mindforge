@@ -40,19 +40,24 @@ Package ID: `com.uzbek2003.quiznova`
 
 ## Deploy web version
 
-Deploy the `dist/` folder to Vercel, Netlify, or GitHub Pages. A standalone privacy policy for store URLs lives at `/privacy.html`.
+Deploy the `dist/` folder to Vercel, Netlify, or GitHub Pages. Public legal URLs:
+
+- `/privacy`
+- `/terms`
+- `/about`
+- `/support`
 
 ```bash
 npm run deploy:vercel
 ```
 
-Privacy policy URL (after deploy): `https://your-domain.com/privacy.html`
+Privacy policy URL (after deploy): `https://your-domain.com/privacy`
 
 ## Pre-publish checklist
 
 | Item | Status |
 |------|--------|
-| Rename from MindForge | Done → **QuizNova** |
+| App rebrand to QuizNova | Done |
 | Remove age 7–35 marketing | Done |
 | Privacy policy (in-app + web) | Done |
 | Terms, About, Contact | Done |

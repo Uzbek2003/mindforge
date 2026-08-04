@@ -39,8 +39,7 @@ export function buildSessionQueue(options: {
   }
 
   if (mode === 'daily') {
-    const pool = shuffle(ALL_PUZZLES)
-    return seededShuffle(pool, dailySeed()).slice(0, 5)
+    return seededShuffle(ALL_PUZZLES, dailySeed()).slice(0, 5)
   }
 
   const filters =
@@ -69,6 +68,15 @@ export function buildSessionQueue(options: {
   const limit = modeCounts[mode]
   if (limit == null) return shuffled
   return shuffled.slice(0, Math.min(limit, shuffled.length))
+}
+
+/** Next batch for endless mode — prefer unseen-in-session puzzles, then allow repeats. */
+export function buildEndlessExtension(seenIds: Set<number>): Puzzle[] {
+  const unseen = shuffle(ALL_PUZZLES.filter((p) => !seenIds.has(p.id)))
+  if (unseen.length > 0) {
+    return unseen.slice(0, 10)
+  }
+  return shuffle(ALL_PUZZLES).slice(0, 10)
 }
 
 export function formatDuration(ms: number): string {
