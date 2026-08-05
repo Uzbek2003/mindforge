@@ -1,15 +1,14 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { Capacitor } from '@capacitor/core'
 import { APP_VERSION, SUPPORT_EMAIL } from '../constants'
 import type { AppSettings } from '../types'
 import {
   DIRECT_TTS_TEST_OPTIONS,
-  runDirectNativeTtsTest,
-  stopDirectNativeTtsTest,
+  isDirectNativeTestRunning,
+  requestDirectNativeTtsStop,
+  startDirectNativeTtsTest,
   type DirectTtsTestResult,
 } from '../services/directNativeTtsTest'
-import { getVoices, textToSpeechService, type VoiceOption } from '../services/textToSpeech'
-import { TEST_VOICE_PHRASE } from '../utils/speechText'
 import { Header } from './UI'
 
 interface SettingsScreenProps {
@@ -31,78 +30,34 @@ export function SettingsScreen({
   onOpenLegal,
   onBack,
 }: SettingsScreenProps) {
-  const [voices, setVoices] = useState<VoiceOption[]>([])
-  const [testing, setTesting] = useState(false)
   const [directTesting, setDirectTesting] = useState(false)
   const [directTestResult, setDirectTestResult] = useState<DirectTtsTestResult | null>(null)
-  const [voiceUnavailable, setVoiceUnavailable] = useState(false)
 
-  useEffect(() => {
-    void getVoices().then(setVoices)
-  }, [])
+  const isNativePlatform = Capacitor.getPlatform() === 'android' || Capacitor.getPlatform() === 'ios'
 
-  useEffect(() => {
-    void textToSpeechService.initializeCatalog(settings)
-  }, [settings.voiceId, settings.voiceSpeed, settings.voicePitch, settings.voiceVolume])
+  const handleDirectTtsTest = () => {
+    if (directTesting || isDirectNativeTestRunning()) return
 
-  useEffect(() => {
-    return textToSpeechService.subscribe((state) => {
-      setVoiceUnavailable(state.voiceUnavailable)
-    })
-  }, [])
-
-  const selectedVoice =
-    voices.find((voice) => voice.id === settings.voiceId) ??
-    (settings.voiceId == null
-      ? { id: '', name: 'System default (English)', lang: 'en-US' }
-      : null)
-
-  const handleVoiceChange = (voiceId: string | null) => {
-    void textToSpeechService.stop()
-    onUpdate('voiceId', voiceId)
-  }
-
-  const handleTestVoice = async () => {
-    setTesting(true)
-    try {
-      await textToSpeechService.testVoice(settings)
-    } finally {
-      setTesting(false)
-    }
-  }
-
-  const handleDirectTtsTest = async () => {
     setDirectTesting(true)
     setDirectTestResult(null)
-    try {
-      const result = await runDirectNativeTtsTest()
+
+    const started = startDirectNativeTtsTest((result) => {
       setDirectTestResult(result)
-    } finally {
+      setDirectTesting(false)
+    })
+
+    if (!started) {
       setDirectTesting(false)
     }
   }
 
-  const handleDirectTtsStop = async () => {
-    try {
-      await stopDirectNativeTtsTest()
-      setDirectTestResult((prev) =>
-        prev
-          ? { ...prev, log: [...prev.log, 'Native TTS stop requested'] }
-          : prev,
-      )
-    } catch (error) {
-      setDirectTestResult((prev) =>
-        prev
-          ? {
-              ...prev,
-              log: [...prev.log, `Native TTS stop failed: ${error instanceof Error ? error.message : String(error)}`],
-            }
-          : prev,
-      )
-    }
+  const handleDirectTtsStop = () => {
+    requestDirectNativeTtsStop()
+    setDirectTestResult((prev) =>
+      prev ? { ...prev, log: [...prev.log, 'Native TTS stop requested manually'] } : prev,
+    )
+    setDirectTesting(false)
   }
-
-  const isNativePlatform = Capacitor.getPlatform() === 'android' || Capacitor.getPlatform() === 'ios'
 
   const handleReset = () => {
     if (
@@ -163,20 +118,9 @@ export function SettingsScreen({
       <section className="panel">
         <h3>Night Guardian voice</h3>
         <p className="setting-description">
-          Optional spoken explanations with a deep, calm mentor-style voice. Written explanations always stay visible.
+          Automatic spoken explanations are temporarily disabled while native TTS is being fixed. Written explanations
+          always remain visible during gameplay.
         </p>
-
-        {voiceUnavailable && (
-          <p className="setting-warning" role="alert">
-            Voice unavailable. Open Android Settings → Language and input → Text-to-speech output, then install or update Google Speech Services with an English voice.
-          </p>
-        )}
-
-        {selectedVoice && (
-          <p className="setting-meta">
-            Selected voice: <strong>{selectedVoice.name}</strong> ({selectedVoice.lang.replace('_', '-')})
-          </p>
-        )}
 
         <label className="setting-row">
           <span>Voice explanations</span>
@@ -184,6 +128,8 @@ export function SettingsScreen({
             type="checkbox"
             checked={settings.voiceExplanationsEnabled}
             onChange={(e) => onUpdate('voiceExplanationsEnabled', e.target.checked)}
+            disabled
+            aria-describedby="voice-disabled-note"
           />
         </label>
         <label className="setting-row">
@@ -192,125 +138,48 @@ export function SettingsScreen({
             type="checkbox"
             checked={settings.voiceAutoPlay}
             onChange={(e) => onUpdate('voiceAutoPlay', e.target.checked)}
-            disabled={!settings.voiceExplanationsEnabled}
+            disabled
+            aria-describedby="voice-disabled-note"
           />
         </label>
-        <label className="setting-row">
-          <span>Stop speech when leaving a question</span>
-          <input
-            type="checkbox"
-            checked={settings.stopSpeechOnLeave}
-            onChange={(e) => onUpdate('stopSpeechOnLeave', e.target.checked)}
-          />
-        </label>
-        <label className="setting-row setting-select">
-          <span>Voice (optional)</span>
-          <select
-            value={settings.voiceId ?? ''}
-            onChange={(e) => handleVoiceChange(e.target.value || null)}
-            disabled={!settings.voiceExplanationsEnabled}
-            aria-label="Select voice"
-          >
-            <option value="">System default (English)</option>
-            {voices.map((voice) => (
-              <option key={voice.id} value={voice.id}>
-                {voice.name} ({voice.lang})
-              </option>
-            ))}
-          </select>
-        </label>
-        {voices.length === 0 && (
-          <p className="setting-meta">
-            No individual voices listed — the app will use your device&apos;s default English speech engine.
-          </p>
-        )}
-        <label className="setting-row setting-select">
-          <span>Speaking speed</span>
-          <select
-            value={settings.voiceSpeed}
-            onChange={(e) => onUpdate('voiceSpeed', e.target.value as AppSettings['voiceSpeed'])}
-            disabled={!settings.voiceExplanationsEnabled}
-            aria-label="Speaking speed"
-          >
-            <option value="slow">Slow</option>
-            <option value="normal">Normal</option>
-            <option value="fast">Fast</option>
-          </select>
-        </label>
-        <label className="setting-row setting-select">
-          <span>Pitch</span>
-          <select
-            value={settings.voicePitch}
-            onChange={(e) => onUpdate('voicePitch', e.target.value as AppSettings['voicePitch'])}
-            disabled={!settings.voiceExplanationsEnabled}
-            aria-label="Voice pitch"
-          >
-            <option value="deep">Deep</option>
-            <option value="normal">Normal</option>
-          </select>
-        </label>
-        <label className="setting-row setting-range">
-          <span>Volume</span>
-          <input
-            type="range"
-            min={0}
-            max={1}
-            step={0.05}
-            value={settings.voiceVolume}
-            onChange={(e) => onUpdate('voiceVolume', Number(e.target.value))}
-            disabled={!settings.voiceExplanationsEnabled || !settings.soundEnabled}
-            aria-label="Voice volume"
-          />
-          <span className="range-value">{Math.round(settings.voiceVolume * 100)}%</span>
-        </label>
-        <button
-          type="button"
-          className="btn btn-ghost setting-btn"
-          onClick={handleTestVoice}
-          disabled={!settings.voiceExplanationsEnabled || !settings.soundEnabled || testing}
-          aria-label="Test selected voice"
-        >
-          {testing ? 'Testing voice…' : 'Test voice'}
-        </button>
-        <p className="setting-meta setting-test-phrase">{TEST_VOICE_PHRASE}</p>
+        <p id="voice-disabled-note" className="setting-meta">
+          Voice toggles are off by default and disabled until native TTS is restored.
+        </p>
 
         {isNativePlatform && (
           <>
-            <h4 className="setting-subheading">Direct TTS Test (native plugin)</h4>
+            <h4 className="setting-subheading">Native TTS Test</h4>
             <p className="setting-description">
-              Bypasses detection and calls <code>TextToSpeech.speak()</code> directly. Plugin v8.0.2 uses{' '}
-              <code>lang</code>, <code>rate</code>, <code>pitch</code>, <code>volume</code> — not locale or speechRate.
+              Manual test only. Calls <code>TextToSpeech.speak()</code> once with no automatic retries or discovery.
             </p>
             <button
               type="button"
               className="btn btn-primary setting-btn"
               onClick={handleDirectTtsTest}
-              disabled={directTesting}
-              aria-label="Run direct native TTS test"
+              disabled={directTesting || isDirectNativeTestRunning()}
+              aria-label="Run native TTS test"
             >
-              {directTesting ? 'Running direct test…' : 'Direct TTS Test'}
+              {directTesting ? 'Running native test…' : 'Native TTS Test'}
             </button>
             <button
               type="button"
               className="btn btn-ghost setting-btn"
               onClick={handleDirectTtsStop}
-              aria-label="Stop direct native TTS test"
+              disabled={!directTesting && !isDirectNativeTestRunning()}
+              aria-label="Stop native TTS test"
             >
-              Stop direct test
+              Stop native test
             </button>
-            <p className="setting-meta">
-              Test phrase: {DIRECT_TTS_TEST_OPTIONS.text}
-            </p>
-            <p className="setting-meta">
-              Options: {JSON.stringify(DIRECT_TTS_TEST_OPTIONS)}
-            </p>
+            <p className="setting-meta">Phrase: {DIRECT_TTS_TEST_OPTIONS.text}</p>
+            <p className="setting-meta">Options: {JSON.stringify(DIRECT_TTS_TEST_OPTIONS)}</p>
             {import.meta.env.DEV && directTestResult && (
-              <div className="tts-debug-panel" role="log" aria-label="Direct TTS debug output">
+              <div className="tts-debug-panel" role="log" aria-label="Native TTS debug output">
                 <strong>Debug panel</strong>
                 <p>Platform: {directTestResult.platform}</p>
                 <p>isNativePlatform: {String(directTestResult.isNativePlatform)}</p>
                 <p>Path: {directTestResult.path}</p>
                 <p>Success: {String(directTestResult.success)}</p>
+                <p>Timed out: {String(directTestResult.timedOut)}</p>
                 {directTestResult.error && (
                   <pre className="tts-debug-error">{directTestResult.error}</pre>
                 )}

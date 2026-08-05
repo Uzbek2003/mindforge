@@ -6,9 +6,6 @@ import { buildSessionQueue, buildEndlessExtension, calcSessionStreak } from '../
 import { hapticError, hapticSuccess } from '../utils/haptics'
 import { playCorrectSound, playWrongSound } from '../utils/sounds'
 import { buildQuestionReportEmail } from '../utils/report'
-import { buildExplanationSpeech } from '../utils/explanationSpeech'
-import { useVoiceExplanation } from '../hooks/useVoiceExplanation'
-import { VoiceExplanationPanel } from './VoiceExplanationPanel'
 import { Header } from './UI'
 
 interface PuzzleGameProps {
@@ -68,17 +65,12 @@ export function PuzzleGame({
   const [timeLeft, setTimeLeft] = useState(timeLimit)
   const startedAt = useRef(resumeSession?.startedAt ?? Date.now())
   const answeringRef = useRef(false)
-  const voice = useVoiceExplanation(settings)
 
   const puzzle = puzzleQueue[index]
   const displayPuzzle = revealed && answeredPuzzle ? answeredPuzzle : puzzle
   const sessionTotal = puzzleQueue.length
   const sessionNum = index + 1
   const isEndless = mode === 'endless'
-
-  useEffect(() => {
-    return () => voice.stop()
-  }, [voice])
 
   useEffect(() => {
     if (!puzzle || puzzleQueue.length === 0) return
@@ -95,7 +87,6 @@ export function PuzzleGame({
 
   const finishSession = useCallback(
     (answers: SessionAnswer[]) => {
-      voice.stop()
       const correct = answers.filter((a) => a.correct).length
       const incorrect = answers.length - correct
       onSessionUpdate(null)
@@ -112,7 +103,7 @@ export function PuzzleGame({
         mode,
       })
     },
-    [category, difficulty, mode, onFinish, onSessionUpdate, voice],
+    [category, difficulty, mode, onFinish, onSessionUpdate],
   )
 
   const revealAnswer = useCallback(
@@ -181,7 +172,6 @@ export function PuzzleGame({
   }, [handleTimeout, puzzle?.id, revealed, timeLimit])
 
   const handleNext = useCallback(() => {
-    voice.stop()
     answeringRef.current = false
     setReported(false)
     setTimedOut(false)
@@ -216,23 +206,9 @@ export function PuzzleGame({
     }
 
     finishSession(sessionAnswers)
-  }, [completedIds, finishSession, index, isEndless, puzzleQueue, sessionAnswers, timeLimit, voice])
+  }, [completedIds, finishSession, index, isEndless, puzzleQueue, sessionAnswers, timeLimit])
 
   const isCorrect = selected === displayPuzzle?.correctIndex
-  const speechText =
-    revealed && displayPuzzle
-      ? buildExplanationSpeech(displayPuzzle, selected, Boolean(isCorrect), timedOut)
-      : ''
-
-  useEffect(() => {
-    if (!revealed || !displayPuzzle || !speechText) return
-    if (!settings.voiceAutoPlay || !settings.voiceExplanationsEnabled || !settings.soundEnabled) return
-    voice.play(speechText)
-  }, [displayPuzzle?.id, revealed, settings.voiceAutoPlay, settings.voiceExplanationsEnabled, settings.soundEnabled, speechText, voice])
-
-  useEffect(() => {
-    return () => voice.stop()
-  }, [index, voice])
 
   const handleReport = () => {
     if (!displayPuzzle || reported) return
@@ -242,9 +218,8 @@ export function PuzzleGame({
   }
 
   const handleExit = useCallback(() => {
-    voice.stop()
     onExit()
-  }, [onExit, voice])
+  }, [onExit])
 
   if (!puzzle || puzzleQueue.length === 0) {
     return (
@@ -366,19 +341,6 @@ export function PuzzleGame({
                 {isCorrect ? 'Correct!' : timedOut ? "Time's up!" : 'Not quite'}
               </strong>
             </div>
-
-            <VoiceExplanationPanel
-              settings={settings}
-              isSpeaking={voice.isSpeaking}
-              isPaused={voice.isPaused}
-              status={voice.status}
-              voiceUnavailable={voice.voiceUnavailable}
-              onPlay={() => voice.play(speechText)}
-              onPause={voice.pause}
-              onResume={voice.resume}
-              onReplay={() => voice.replay(speechText)}
-              onStop={voice.stop}
-            />
 
             {!isCorrect && timedOut && (
               <p className="feedback-answer">
