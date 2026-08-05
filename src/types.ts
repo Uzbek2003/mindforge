@@ -42,8 +42,9 @@ export interface LastSession {
 
 export interface SessionAnswer {
   puzzleId: number
-  selectedIndex: number
+  selectedIndex: number | null
   correct: boolean
+  timedOut?: boolean
 }
 
 export interface SessionResult {
@@ -95,6 +96,13 @@ export const UNLOCK_THRESHOLDS = {
   medium: 15,
   hard: 15,
 } as const
+
+/** Seconds allowed per question by difficulty. */
+export const DIFFICULTY_TIME_LIMITS: Record<Difficulty, number> = {
+  easy: 60,
+  medium: 40,
+  hard: 35,
+}
 
 export const DEFAULT_SETTINGS: AppSettings = {
   soundEnabled: true,

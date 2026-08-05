@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { AppSettings, Category, Difficulty, LastSession, Puzzle, SessionAnswer, SessionMode, SessionResult } from '../types'
 import { getPuzzleById } from '../data'
-import { CATEGORY_LABELS, DIFFICULTY_LABELS, SESSION_MODE_CONFIG } from '../types'
+import { CATEGORY_LABELS, DIFFICULTY_LABELS, DIFFICULTY_TIME_LIMITS, SESSION_MODE_CONFIG } from '../types'
 import { buildSessionQueue, buildEndlessExtension, calcSessionStreak } from '../utils/session'
 import { hapticError, hapticSuccess } from '../utils/haptics'
 import { playCorrectSound, playWrongSound } from '../utils/sounds'
 import { buildQuestionReportEmail } from '../utils/report'
+import { speakBatmanIncorrect, stopBatmanVoice } from '../utils/batmanVoice'
 import { Header } from './UI'
 
 interface PuzzleGameProps {
@@ -41,6 +42,8 @@ export function PuzzleGame({
   onReport,
   reportedQuestions,
 }: PuzzleGameProps) {
+  const timeLimit = DIFFICULTY_TIME_LIMITS[difficulty]
+
   const [puzzleQueue, setPuzzleQueue] = useState<Puzzle[]>(() => {
     if (resumeSession) {
       return resumeSession.puzzleIds
@@ -54,11 +57,13 @@ export function PuzzleGame({
   const [selected, setSelected] = useState<number | null>(null)
   const [showHint, setShowHint] = useState(false)
   const [revealed, setRevealed] = useState(false)
+  const [timedOut, setTimedOut] = useState(false)
   const [answeredPuzzle, setAnsweredPuzzle] = useState<Puzzle | null>(null)
   const [sessionAnswers, setSessionAnswers] = useState<SessionAnswer[]>(
     resumeSession?.sessionAnswers ?? [],
   )
   const [reported, setReported] = useState(false)
+  const [timeLeft, setTimeLeft] = useState(timeLimit)
   const startedAt = useRef(resumeSession?.startedAt ?? Date.now())
   const answeringRef = useRef(false)
 
@@ -67,6 +72,10 @@ export function PuzzleGame({
   const sessionTotal = puzzleQueue.length
   const sessionNum = index + 1
   const isEndless = mode === 'endless'
+
+  useEffect(() => {
+    return () => stopBatmanVoice()
+  }, [])
 
   useEffect(() => {
     if (!puzzle || puzzleQueue.length === 0) return
@@ -83,6 +92,7 @@ export function PuzzleGame({
 
   const finishSession = useCallback(
     (answers: SessionAnswer[]) => {
+      stopBatmanVoice()
       const correct = answers.filter((a) => a.correct).length
       const incorrect = answers.length - correct
       onSessionUpdate(null)
@@ -102,38 +112,86 @@ export function PuzzleGame({
     [category, difficulty, mode, onFinish, onSessionUpdate],
   )
 
+  const revealAnswer = useCallback(
+    async (
+      currentPuzzle: Puzzle,
+      optionIndex: number | null,
+      correct: boolean,
+      wasTimedOut: boolean,
+    ) => {
+      setAnsweredPuzzle(currentPuzzle)
+      setSelected(optionIndex)
+      setTimedOut(wasTimedOut)
+      setRevealed(true)
+      onComplete(currentPuzzle.id, correct)
+
+      setSessionAnswers((prev) => [
+        ...prev,
+        {
+          puzzleId: currentPuzzle.id,
+          selectedIndex: optionIndex,
+          correct,
+          timedOut: wasTimedOut,
+        },
+      ])
+
+      if (correct) {
+        playCorrectSound(settings.soundEnabled)
+        await hapticSuccess(settings.vibrationEnabled)
+      } else {
+        playWrongSound(settings.soundEnabled)
+        await hapticError(settings.vibrationEnabled)
+        speakBatmanIncorrect(
+          currentPuzzle.explanation,
+          currentPuzzle.options[currentPuzzle.correctIndex],
+          settings.soundEnabled,
+        )
+      }
+
+    },
+    [onComplete, settings.soundEnabled, settings.vibrationEnabled],
+  )
+
   const handleSelect = async (optionIndex: number) => {
     if (revealed || !puzzle || answeringRef.current) return
     answeringRef.current = true
-
     const correct = optionIndex === puzzle.correctIndex
-    setAnsweredPuzzle(puzzle)
-    setSelected(optionIndex)
-    setRevealed(true)
-    onComplete(puzzle.id, correct)
-
-    const nextAnswers = [
-      ...sessionAnswers,
-      { puzzleId: puzzle.id, selectedIndex: optionIndex, correct },
-    ]
-    setSessionAnswers(nextAnswers)
-
-    if (correct) {
-      playCorrectSound(settings.soundEnabled)
-      await hapticSuccess(settings.vibrationEnabled)
-    } else {
-      playWrongSound(settings.soundEnabled)
-      await hapticError(settings.vibrationEnabled)
-    }
+    await revealAnswer(puzzle, optionIndex, correct, false)
   }
 
+  const handleTimeout = useCallback(async () => {
+    if (revealed || !puzzle || answeringRef.current) return
+    answeringRef.current = true
+    await revealAnswer(puzzle, null, false, true)
+  }, [puzzle, revealAnswer, revealed])
+
+  useEffect(() => {
+    if (revealed || !puzzle) return
+
+    setTimeLeft(timeLimit)
+    const timer = window.setInterval(() => {
+      setTimeLeft((prev) => {
+        if (prev <= 1) {
+          window.clearInterval(timer)
+          handleTimeout()
+          return 0
+        }
+        return prev - 1
+      })
+    }, 1000)
+
+    return () => window.clearInterval(timer)
+  }, [handleTimeout, puzzle?.id, revealed, timeLimit])
+
   const handleNext = useCallback(() => {
+    stopBatmanVoice()
     answeringRef.current = false
     setReported(false)
+    setTimedOut(false)
 
     if (isEndless && index >= puzzleQueue.length - 1) {
       const seenIds = new Set(puzzleQueue.map((p) => p.id))
-      const more = buildEndlessExtension(seenIds)
+      const more = buildEndlessExtension(seenIds, completedIds)
 
       if (more.length === 0) {
         finishSession(sessionAnswers)
@@ -146,6 +204,7 @@ export function PuzzleGame({
       setShowHint(false)
       setRevealed(false)
       setAnsweredPuzzle(null)
+      setTimeLeft(timeLimit)
       return
     }
 
@@ -155,11 +214,12 @@ export function PuzzleGame({
       setShowHint(false)
       setRevealed(false)
       setAnsweredPuzzle(null)
+      setTimeLeft(timeLimit)
       return
     }
 
     finishSession(sessionAnswers)
-  }, [finishSession, index, isEndless, puzzleQueue, sessionAnswers])
+  }, [completedIds, finishSession, index, isEndless, puzzleQueue, sessionAnswers, timeLimit])
 
   const handleReport = () => {
     if (!displayPuzzle || reported) return
@@ -173,8 +233,11 @@ export function PuzzleGame({
       <div className="screen">
         <Header onHome={onExit} showHome />
         <div className="empty-state">
-          <h2>No puzzles available</h2>
-          <p>Try another category or difficulty.</p>
+          <h2>All questions completed!</h2>
+          <p>
+            You&apos;ve answered every available {DIFFICULTY_LABELS[difficulty].toLowerCase()} puzzle
+            in this selection. Try another category or difficulty level.
+          </p>
           <button type="button" className="btn btn-primary" onClick={onExit}>
             Back to home
           </button>
@@ -188,6 +251,8 @@ export function PuzzleGame({
     selected != null ? displayPuzzle.options[selected] : null
   const correctAnswer = displayPuzzle.options[displayPuzzle.correctIndex]
   const alreadyReported = reported || reportedQuestions.includes(displayPuzzle.id)
+  const timerPct = (timeLeft / timeLimit) * 100
+  const timerLow = timeLeft <= 10 && !revealed
 
   return (
     <div className="screen game-screen">
@@ -197,11 +262,23 @@ export function PuzzleGame({
         <span className="badge">{category === 'all' ? 'Mixed' : CATEGORY_LABELS[category]}</span>
         <span className={`badge badge-${difficulty}`}>{DIFFICULTY_LABELS[difficulty]}</span>
         <span className="badge badge-muted">{SESSION_MODE_CONFIG[mode].label}</span>
+        <span
+          className={`timer-badge ${timerLow ? 'timer-low' : ''} ${revealed ? 'timer-paused' : ''}`}
+          aria-label={`${timeLeft} seconds remaining`}
+        >
+          ⏱ {timeLeft}s
+        </span>
         <span className="game-counter" aria-label={`Question ${sessionNum} of ${sessionTotal}`}>
           {sessionNum} / {isEndless ? '∞' : sessionTotal}
         </span>
         {streak > 0 && <span className="streak">Streak: {streak}</span>}
       </div>
+
+      {!revealed && (
+        <div className="timer-bar" aria-hidden="true">
+          <div className="timer-bar-fill" style={{ width: `${timerPct}%` }} />
+        </div>
+      )}
 
       <div className="puzzle-card">
         <p className="puzzle-question" id="question-text">
@@ -268,10 +345,23 @@ export function PuzzleGame({
           >
             <div className="feedback-header">
               <span className="feedback-icon" aria-hidden="true">{isCorrect ? '✓' : '✕'}</span>
-              <strong>{isCorrect ? 'Correct!' : 'Not quite'}</strong>
+              <strong>
+                {isCorrect ? 'Correct!' : timedOut ? "Time's up!" : 'Not quite'}
+              </strong>
             </div>
 
-            {!isCorrect && yourAnswer && (
+            {!isCorrect && (
+              <p className="batman-voice-note" role="note">
+                🦇 Batman voice is explaining the answer{settings.soundEnabled ? '' : ' (enable sound in Settings)'}.
+              </p>
+            )}
+
+            {!isCorrect && timedOut && (
+              <p className="feedback-answer">
+                <span className="feedback-label">Result:</span> Time ran out before you answered.
+              </p>
+            )}
+            {!isCorrect && !timedOut && yourAnswer && (
               <p className="feedback-answer">
                 <span className="feedback-label">Your answer:</span> {yourAnswer}
               </p>

@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import type { Category, Difficulty, LastSession, SessionMode } from '../types'
 import { ALL_PUZZLES, getPuzzles } from '../data'
-import { SESSION_MODE_CONFIG, UNLOCK_THRESHOLDS } from '../types'
+import { SESSION_MODE_CONFIG, UNLOCK_THRESHOLDS, DIFFICULTY_LABELS } from '../types'
+import { getUnsolvedPuzzles } from '../utils/session'
 import { CategoryCard, DifficultyCard, Header, ProgressRing } from './UI'
 
 interface HomeScreenProps {
@@ -64,13 +65,19 @@ export function HomeScreen({
     return puzzles.filter((p) => completedIds.includes(p.id)).length
   }
 
-  const availableCount =
+  const unsolvedCount =
+    mode === 'daily'
+      ? 5
+      : getUnsolvedPuzzles(category, difficulty, completedIds, mode).length
+
+  const totalInSelection =
     category === 'all'
       ? getPuzzles({ difficulty }).length
       : getPuzzles({ category, difficulty }).length
 
   const canStart =
-    (mode === 'daily' || isDifficultyUnlocked(difficulty)) && availableCount > 0
+    (mode === 'daily' || isDifficultyUnlocked(difficulty)) &&
+    (mode === 'daily' || unsolvedCount > 0)
 
   const startRegular = () => {
     onStart({ category, difficulty, mode })
@@ -234,8 +241,18 @@ export function HomeScreen({
           disabled={!canStart}
           onClick={startRegular}
         >
-          {canStart ? 'Start Playing' : 'Select an unlocked difficulty'}
+          {!canStart
+            ? unsolvedCount === 0
+              ? 'All questions completed for this level'
+              : 'Select an unlocked difficulty'
+            : 'Start Playing'}
         </button>
+        {unsolvedCount > 0 && unsolvedCount < totalInSelection && (
+          <p className="panel-hint start-hint">
+            {unsolvedCount} new {DIFFICULTY_LABELS[difficulty].toLowerCase()} question
+            {unsolvedCount === 1 ? '' : 's'} remaining — no repeats until you finish them all.
+          </p>
+        )}
       </div>
 
       <footer className="footer">

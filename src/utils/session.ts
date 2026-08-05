@@ -24,6 +24,27 @@ function dailySeed(): number {
   return now.getFullYear() * 10000 + (now.getMonth() + 1) * 100 + now.getDate()
 }
 
+function puzzleFilters(
+  category: Category | 'all',
+  difficulty: Difficulty,
+  mode: SessionMode,
+) {
+  if (mode === 'endless') return {}
+  if (category === 'all') return { difficulty }
+  return { category, difficulty }
+}
+
+/** Puzzles not yet attempted for the given category/difficulty. */
+export function getUnsolvedPuzzles(
+  category: Category | 'all',
+  difficulty: Difficulty,
+  completedIds: number[],
+  mode: SessionMode = 'standard',
+): Puzzle[] {
+  const filters = puzzleFilters(category, difficulty, mode)
+  return getPuzzles(filters).filter((p) => !completedIds.includes(p.id))
+}
+
 export function buildSessionQueue(options: {
   category: Category | 'all'
   difficulty: Difficulty
@@ -42,17 +63,12 @@ export function buildSessionQueue(options: {
     return seededShuffle(ALL_PUZZLES, dailySeed()).slice(0, 5)
   }
 
-  const filters =
-    mode === 'endless'
-      ? {}
-      : category === 'all'
-        ? { difficulty }
-        : { category, difficulty }
+  const unsolved = getUnsolvedPuzzles(category, difficulty, completedIds, mode)
+  const shuffled = shuffle(unsolved)
 
-  const all = getPuzzles(filters)
-  const unsolved = all.filter((p) => !completedIds.includes(p.id))
-  const pool = unsolved.length > 0 ? unsolved : all
-  const shuffled = shuffle(pool)
+  if (shuffled.length === 0) {
+    return []
+  }
 
   if (mode === 'endless') {
     return shuffled.slice(0, 10)
@@ -70,13 +86,15 @@ export function buildSessionQueue(options: {
   return shuffled.slice(0, Math.min(limit, shuffled.length))
 }
 
-/** Next batch for endless mode — prefer unseen-in-session puzzles, then allow repeats. */
-export function buildEndlessExtension(seenIds: Set<number>): Puzzle[] {
-  const unseen = shuffle(ALL_PUZZLES.filter((p) => !seenIds.has(p.id)))
-  if (unseen.length > 0) {
-    return unseen.slice(0, 10)
-  }
-  return shuffle(ALL_PUZZLES).slice(0, 10)
+/** Next batch for endless mode — only unattempted puzzles, no repeats. */
+export function buildEndlessExtension(
+  seenIds: Set<number>,
+  completedIds: number[],
+): Puzzle[] {
+  const fresh = shuffle(
+    ALL_PUZZLES.filter((p) => !seenIds.has(p.id) && !completedIds.includes(p.id)),
+  )
+  return fresh.slice(0, 10)
 }
 
 export function formatDuration(ms: number): string {

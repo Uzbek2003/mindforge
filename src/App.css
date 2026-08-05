@@ -24,9 +24,10 @@
   width: 2.5rem;
   height: 2.5rem;
   border-radius: 10px;
-  background: linear-gradient(135deg, var(--accent), #a78bfa);
+  background: linear-gradient(135deg, #1e6fd9, #3b9eff);
   color: white;
   font-size: 1.1rem;
+  font-weight: 700;
 }
 
 .header h1 {
@@ -287,7 +288,7 @@
 }
 
 .btn-primary {
-  background: linear-gradient(135deg, var(--accent), #8b5cf6);
+  background: linear-gradient(135deg, #1e6fd9, #3b9eff);
   color: white;
 }
 
@@ -684,4 +685,56 @@
 
 .empty-state h2 {
   margin-bottom: 1rem;
+}
+
+.timer-badge {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.82rem;
+  font-weight: 700;
+  padding: 0.25rem 0.6rem;
+  border-radius: 999px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+}
+
+.timer-badge.timer-low {
+  border-color: var(--wrong);
+  color: var(--wrong);
+  animation: timerPulse 1s ease infinite;
+}
+
+.timer-badge.timer-paused {
+  opacity: 0.5;
+}
+
+.timer-bar {
+  height: 6px;
+  background: rgba(255, 255, 255, 0.45);
+  border-radius: 999px;
+  overflow: hidden;
+  margin-bottom: 1rem;
+}
+
+.timer-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent), #3b9eff);
+  border-radius: 999px;
+  transition: width 1s linear;
+}
+
+@keyframes timerPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.65; }
+}
+
+.batman-voice-note {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin-bottom: 0.65rem;
+  font-style: italic;
+}
+
+.start-hint {
+  text-align: center;
+  margin-top: 0.35rem;
 }
