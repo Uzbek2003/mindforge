@@ -372,7 +372,7 @@ export function PuzzleGame({
               isSpeaking={voice.isSpeaking}
               isPaused={voice.isPaused}
               status={voice.status}
-              voiceAvailable={voice.voiceAvailable}
+              voiceUnavailable={voice.voiceUnavailable}
               onPlay={() => voice.play(speechText)}
               onPause={voice.pause}
               onResume={voice.resume}

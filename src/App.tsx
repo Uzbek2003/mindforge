@@ -13,6 +13,7 @@ import { SettingsScreen } from './components/SettingsScreen'
 import { LegalPage } from './components/LegalPage'
 import { legalPathToScreen, screenToLegalPath } from './utils/routes'
 import { preloadVoices, textToSpeechService } from './services/textToSpeech'
+import { isDirectNativeTestRunning } from './services/directNativeTtsTest'
 import './App.css'
 
 type Screen =
@@ -65,6 +66,10 @@ function App() {
   }, [settings.voiceId])
 
   useEffect(() => {
+    textToSpeechService.setVoiceIdClearHandler(() => updateSetting('voiceId', null))
+  }, [updateSetting])
+
+  useEffect(() => {
     const legalScreen = legalPathToScreen(window.location.pathname)
     if (legalScreen) setScreen(legalScreen)
   }, [])
@@ -94,7 +99,7 @@ function App() {
     if (!Capacitor.isNativePlatform()) return
 
     const stateSub = CapApp.addListener('appStateChange', ({ isActive }) => {
-      if (!isActive) void textToSpeechService.stop()
+      if (!isActive && !isDirectNativeTestRunning()) void textToSpeechService.stop()
     })
 
     return () => {

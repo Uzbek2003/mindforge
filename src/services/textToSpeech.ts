@@ -1,7 +1,8 @@
 import { Capacitor } from '@capacitor/core'
-import { TextToSpeech, QueueStrategy } from '@capacitor-community/text-to-speech'
+import { TextToSpeech, QueueStrategy, type TTSOptions } from '@capacitor-community/text-to-speech'
 import type { AppSettings, VoicePitch, VoiceSpeed } from '../types'
 import { normalizeSpeechText, TEST_VOICE_PHRASE } from '../utils/speechText'
+import { isDirectNativeTestRunning } from './directNativeTtsTest'
 
 export interface VoiceOption {
   id: string
@@ -15,7 +16,7 @@ export interface TtsState {
   isSpeaking: boolean
   isPaused: boolean
   status: TtsStatus
-  voiceAvailable: boolean
+  voiceUnavailable: boolean
   selectedVoice: VoiceOption | null
   language: string
 }
@@ -33,10 +34,14 @@ const PITCH_VALUE: Record<VoicePitch, number> = {
   normal: 0.9,
 }
 
-const ENGLISH_LANG_PRIORITY = ['en-us', 'en-gb', 'en-ca', 'en-au']
-const SPEECH_LANG = 'en-US'
+const ENGLISH_LANG_PRIORITY = ['en', 'en-us', 'en-gb', 'en-ca', 'en-au']
+const NATIVE_LOCALES = ['en', 'en-US'] as const
 const SESSION_SETTLE_MS = 150
-const DEEP_VOICE_HINTS = ['david', 'mark', 'james', 'daniel', 'aaron', 'guy', 'fred', 'male', 'low', 'google uk english male']
+const DEFAULT_SYSTEM_VOICE: VoiceOption = {
+  id: '',
+  name: 'System default (English)',
+  lang: 'en',
+}
 
 function devLog(...args: unknown[]) {
   if (import.meta.env.DEV) {
@@ -48,12 +53,13 @@ function delay(ms: number) {
   return new Promise<void>((resolve) => window.setTimeout(resolve, ms))
 }
 
-function normalizeLang(lang: string) {
+export function normalizeLang(lang: string) {
   return lang.trim().replace(/_/g, '-').toLowerCase()
 }
 
-function isEnglishLang(lang: string) {
-  return normalizeLang(lang).startsWith('en')
+export function isEnglishLang(lang: string) {
+  const norm = normalizeLang(lang)
+  return norm === 'en' || norm.startsWith('en-')
 }
 
 function englishLangRank(lang: string) {
@@ -64,12 +70,25 @@ function englishLangRank(lang: string) {
   return 999
 }
 
-function isNativeAndroid() {
+export function isAndroidNative() {
   return Capacitor.getPlatform() === 'android'
 }
 
+export function useNativeTtsPath() {
+  return Capacitor.getPlatform() === 'android' || Capacitor.getPlatform() === 'ios'
+}
+
 export function browserPauseSupported() {
-  return !Capacitor.isNativePlatform() && typeof window !== 'undefined' && 'speechSynthesis' in window
+  return !useNativeTtsPath() && typeof window !== 'undefined' && 'speechSynthesis' in window
+}
+
+function formatError(error: unknown): string {
+  if (error instanceof Error) return `${error.name}: ${error.message}`
+  try {
+    return JSON.stringify(error)
+  } catch {
+    return String(error)
+  }
 }
 
 class TextToSpeechService {
@@ -77,12 +96,18 @@ class TextToSpeechService {
   private isSpeaking = false
   private isPaused = false
   private status: TtsStatus = 'idle'
+  private voiceUnavailable = false
   private currentText = ''
   private listeners = new Set<StateListener>()
   private nativeVoices: Array<{ name: string; lang: string; voiceURI: string; default?: boolean }> = []
   private supportedLanguages: string[] = []
   private selectedVoice: VoiceOption | null = null
-  private language = SPEECH_LANG
+  private language = 'en'
+  private onClearVoiceId: (() => void) | null = null
+
+  setVoiceIdClearHandler(handler: () => void) {
+    this.onClearVoiceId = handler
+  }
 
   subscribe(listener: StateListener) {
     this.listeners.add(listener)
@@ -97,7 +122,7 @@ class TextToSpeechService {
       isSpeaking: this.isSpeaking,
       isPaused: this.isPaused,
       status: this.status,
-      voiceAvailable: this.hasEnglishVoice(),
+      voiceUnavailable: this.voiceUnavailable,
       selectedVoice: this.selectedVoice,
       language: this.language,
     }
@@ -115,35 +140,22 @@ class TextToSpeechService {
     return this.status
   }
 
-  hasEnglishVoice() {
-    if (Capacitor.isNativePlatform()) {
-      return this.nativeVoices.some((voice) => isEnglishLang(voice.lang))
-    }
-    if (typeof window === 'undefined' || !window.speechSynthesis) return false
-    return window.speechSynthesis.getVoices().some((voice) => isEnglishLang(voice.lang))
-  }
-
   private notify() {
-    const state = this.getState()
     for (const listener of this.listeners) {
-      listener(state)
+      listener(this.getState())
     }
   }
 
-  private setState(partial: Partial<Pick<TtsState, 'isSpeaking' | 'isPaused' | 'status'>>) {
+  private setState(partial: Partial<Pick<TtsState, 'isSpeaking' | 'isPaused' | 'status' | 'voiceUnavailable'>>) {
     if (partial.isSpeaking !== undefined) this.isSpeaking = partial.isSpeaking
     if (partial.isPaused !== undefined) this.isPaused = partial.isPaused
     if (partial.status !== undefined) this.status = partial.status
+    if (partial.voiceUnavailable !== undefined) this.voiceUnavailable = partial.voiceUnavailable
     this.notify()
   }
 
   private canSpeak(settings: AppSettings) {
-    return (
-      settings.soundEnabled &&
-      settings.voiceExplanationsEnabled &&
-      settings.voiceVolume > 0 &&
-      this.hasEnglishVoice()
-    )
+    return settings.soundEnabled && settings.voiceExplanationsEnabled && settings.voiceVolume > 0
   }
 
   private resolveRate(settings: AppSettings) {
@@ -154,65 +166,65 @@ class TextToSpeechService {
     return PITCH_VALUE[settings.voicePitch]
   }
 
-  private rankEnglishVoice(index: number, voice: { name: string; lang: string }) {
-    const langRank = englishLangRank(voice.lang)
-    const deepBonus = DEEP_VOICE_HINTS.some((hint) => voice.name.toLowerCase().includes(hint)) ? 0 : 1
-    return langRank * 10 + deepBonus + index * 0.001
+  private resolveExplicitNativeVoiceIndex(settings: AppSettings): number | undefined {
+    if (settings.voiceId == null || settings.voiceId === '') return undefined
+
+    const selectedIndex = Number(settings.voiceId)
+    if (Number.isNaN(selectedIndex)) return undefined
+
+    const voice = this.nativeVoices[selectedIndex]
+    if (!voice || !isEnglishLang(voice.lang)) return undefined
+
+    return selectedIndex
   }
 
-  private pickBestEnglishNativeIndex(settings: AppSettings): number | undefined {
-    const english = this.nativeVoices
-      .map((voice, index) => ({ voice, index }))
-      .filter(({ voice }) => isEnglishLang(voice.lang))
-      .sort((a, b) => this.rankEnglishVoice(a.index, a.voice) - this.rankEnglishVoice(b.index, b.voice))
+  private clearInvalidStoredVoice(settings: AppSettings) {
+    if (settings.voiceId == null || settings.voiceId === '') return
+    if (!useNativeTtsPath()) return
+    if (this.nativeVoices.length === 0) return
 
-    if (english.length === 0) return undefined
-
-    if (settings.voiceId != null) {
-      const selectedIndex = Number(settings.voiceId)
-      if (!Number.isNaN(selectedIndex) && this.nativeVoices[selectedIndex] && isEnglishLang(this.nativeVoices[selectedIndex].lang)) {
-        return selectedIndex
-      }
+    if (this.resolveExplicitNativeVoiceIndex(settings) === undefined) {
+      devLog('clearing invalid stored voice', settings.voiceId)
+      this.onClearVoiceId?.()
     }
-
-    return english[0]?.index
   }
 
   private pickBrowserVoice(settings: AppSettings): SpeechSynthesisVoice | undefined {
+    if (!settings.voiceId) return undefined
+
     const voices = typeof window !== 'undefined' ? window.speechSynthesis.getVoices() : []
     const english = voices.filter((voice) => isEnglishLang(voice.lang))
 
-    if (settings.voiceId) {
-      const selected = english.find(
-        (voice) => voice.voiceURI === settings.voiceId || voice.name === settings.voiceId || String(voices.indexOf(voice)) === settings.voiceId,
-      )
-      if (selected) return selected
-    }
-
-    const sorted = [...english].sort(
-      (a, b) => this.rankEnglishVoice(voices.indexOf(a), a) - this.rankEnglishVoice(voices.indexOf(b), b),
+    return english.find(
+      (voice) =>
+        voice.voiceURI === settings.voiceId ||
+        voice.name === settings.voiceId ||
+        String(voices.indexOf(voice)) === settings.voiceId,
     )
-    return sorted[0]
   }
 
   private updateSelectedVoice(settings: AppSettings) {
-    if (Capacitor.isNativePlatform()) {
-      const index = this.pickBestEnglishNativeIndex(settings)
+    if (useNativeTtsPath()) {
+      const index = this.resolveExplicitNativeVoiceIndex(settings)
       if (index == null) {
-        this.selectedVoice = null
-        this.language = SPEECH_LANG
+        this.selectedVoice = DEFAULT_SYSTEM_VOICE
+        this.language = 'en'
         return
       }
       const voice = this.nativeVoices[index]
-      this.selectedVoice = { id: String(index), name: voice.name, lang: voice.lang }
-      this.language = normalizeLang(voice.lang) === 'en-us' ? SPEECH_LANG : voice.lang.replace('_', '-')
+      this.selectedVoice = {
+        id: String(index),
+        name: voice.name,
+        lang: voice.lang.replace(/_/g, '-'),
+      }
+      this.language = voice.lang.replace(/_/g, '-')
       return
     }
 
     const voice = this.pickBrowserVoice(settings)
     if (!voice) {
-      this.selectedVoice = null
-      this.language = SPEECH_LANG
+      this.selectedVoice = DEFAULT_SYSTEM_VOICE
+      this.language = 'en'
       return
     }
     this.selectedVoice = {
@@ -223,8 +235,8 @@ class TextToSpeechService {
     this.language = voice.lang
   }
 
-  private async ensureVoiceCatalog(settings: AppSettings) {
-    if (Capacitor.isNativePlatform()) {
+  async initializeCatalog(settings: AppSettings) {
+    if (useNativeTtsPath()) {
       try {
         const [langs, voices] = await Promise.all([
           TextToSpeech.getSupportedLanguages(),
@@ -232,41 +244,38 @@ class TextToSpeechService {
         ])
         this.supportedLanguages = langs.languages
         this.nativeVoices = voices.voices
-        devLog('platform', Capacitor.getPlatform(), 'languages', this.supportedLanguages, 'voices', this.nativeVoices)
+        devLog('detected languages', this.supportedLanguages)
+        devLog('detected voices', this.nativeVoices)
       } catch (error) {
-        devLog('voice catalog error', error)
+        devLog('voice catalog error (continuing anyway)', error)
       }
     } else if (typeof window !== 'undefined' && window.speechSynthesis) {
       window.speechSynthesis.getVoices()
-      await new Promise<void>((resolve) => {
-        if (window.speechSynthesis.getVoices().length > 0) {
-          resolve()
-          return
-        }
-        window.speechSynthesis.onvoiceschanged = () => resolve()
-        window.setTimeout(resolve, 250)
-      })
+      await delay(250)
+      devLog('detected voices', window.speechSynthesis.getVoices())
     }
 
+    this.clearInvalidStoredVoice(settings)
     this.updateSelectedVoice(settings)
     this.notify()
   }
 
   async getVoices(): Promise<VoiceOption[]> {
-    if (Capacitor.isNativePlatform()) {
+    if (useNativeTtsPath()) {
       try {
         const result = await TextToSpeech.getSupportedVoices()
         this.nativeVoices = result.voices
         return result.voices
           .map((voice, index) => ({ voice, index }))
           .filter(({ voice }) => isEnglishLang(voice.lang))
-          .sort((a, b) => this.rankEnglishVoice(a.index, a.voice) - this.rankEnglishVoice(b.index, b.voice))
+          .sort((a, b) => englishLangRank(a.voice.lang) - englishLangRank(b.voice.lang))
           .map(({ voice, index }) => ({
             id: String(index),
             name: voice.name,
-            lang: voice.lang.replace('_', '-'),
+            lang: voice.lang.replace(/_/g, '-'),
           }))
-      } catch {
+      } catch (error) {
+        devLog('getVoices error', error)
         return []
       }
     }
@@ -282,8 +291,75 @@ class TextToSpeechService {
       }))
   }
 
+  private buildNativeSpeakOptions(
+    text: string,
+    lang: string,
+    settings: AppSettings,
+    explicitVoice?: number,
+  ): TTSOptions {
+    const options: TTSOptions = {
+      text,
+      lang,
+      rate: this.resolveRate(settings),
+      pitch: this.resolvePitch(settings),
+      volume: settings.voiceVolume,
+      queueStrategy: QueueStrategy.Flush,
+    }
+
+    if (explicitVoice !== undefined) {
+      options.voice = explicitVoice
+    }
+
+    if (Capacitor.getPlatform() === 'ios') {
+      options.category = 'ambient'
+    }
+
+    return options
+  }
+
+  private async nativeSpeak(text: string, settings: AppSettings, token: number): Promise<void> {
+    const explicitVoice = this.resolveExplicitNativeVoiceIndex(settings)
+
+    if (settings.voiceId != null && settings.voiceId !== '' && explicitVoice === undefined && this.nativeVoices.length > 0) {
+      this.onClearVoiceId?.()
+      this.updateSelectedVoice({ ...settings, voiceId: null })
+    }
+
+    devLog('platform', Capacitor.getPlatform(), 'isNative', Capacitor.isNativePlatform())
+    devLog('selected voice', this.selectedVoice)
+
+    let lastError: unknown = null
+
+    for (const lang of NATIVE_LOCALES) {
+      const speakParams = this.buildNativeSpeakOptions(text, lang, settings, explicitVoice)
+      devLog('speak params', speakParams)
+
+      try {
+        await TextToSpeech.speak(speakParams)
+        if (token !== this.sessionToken) return
+        this.language = lang
+        this.setState({ voiceUnavailable: false })
+        devLog('native speak completed', { lang, sessionToken: token })
+        return
+      } catch (error) {
+        lastError = error
+        devLog('native speak error', { lang, error: formatError(error) })
+        if (lang === NATIVE_LOCALES[NATIVE_LOCALES.length - 1]) {
+          if (token === this.sessionToken) {
+            this.setState({ voiceUnavailable: true })
+          }
+          throw error
+        }
+      }
+    }
+
+    if (lastError) throw lastError
+  }
+
   private async hardStop(): Promise<void> {
-    if (Capacitor.isNativePlatform()) {
+    if (isDirectNativeTestRunning()) return
+
+    if (useNativeTtsPath()) {
       try {
         await TextToSpeech.stop()
       } catch (error) {
@@ -297,6 +373,8 @@ class TextToSpeechService {
   }
 
   async stop(): Promise<void> {
+    if (isDirectNativeTestRunning()) return
+
     this.sessionToken += 1
     devLog('stop requested', { sessionToken: this.sessionToken })
 
@@ -325,89 +403,63 @@ class TextToSpeechService {
       return
     }
 
-    await this.ensureVoiceCatalog(settings)
-
     const token = await this.beginSession()
     if (token !== this.sessionToken) return
 
     const normalized = normalizeSpeechText(text)
     this.currentText = normalized
-
-    const rate = this.resolveRate(settings)
-    const pitch = this.resolvePitch(settings)
-    const volume = settings.voiceVolume
-
     this.updateSelectedVoice(settings)
     this.setState({ isSpeaking: true, isPaused: false, status: 'speaking' })
 
-    devLog('speak started', {
-      sessionToken: token,
-      platform: Capacitor.getPlatform(),
-      language: this.language,
-      voice: this.selectedVoice,
-      rate,
-      pitch,
-      volume,
-    })
+    try {
+      if (useNativeTtsPath()) {
+        await this.nativeSpeak(normalized, settings, token)
+      } else if (typeof window !== 'undefined' && window.speechSynthesis) {
+        const rate = this.resolveRate(settings)
+        const pitch = this.resolvePitch(settings)
+        const volume = settings.voiceVolume
+        const voice = this.pickBrowserVoice(settings)
 
-    if (Capacitor.isNativePlatform()) {
-      const voiceIndex = this.pickBestEnglishNativeIndex(settings)
-      if (voiceIndex == null) {
-        this.setState({ isSpeaking: false, isPaused: false, status: 'idle' })
-        return
-      }
+        devLog('browser speak params', { lang: 'en', rate, pitch, volume, voice: voice?.name })
 
-      try {
-        await TextToSpeech.speak({
-          text: normalized,
-          lang: SPEECH_LANG,
-          rate,
-          pitch,
-          volume,
-          voice: voiceIndex,
-          queueStrategy: QueueStrategy.Flush,
+        await new Promise<void>((resolve, reject) => {
+          const utterance = new SpeechSynthesisUtterance(normalized)
+          utterance.lang = 'en'
+          utterance.rate = rate
+          utterance.pitch = pitch
+          utterance.volume = volume
+          if (voice) utterance.voice = voice
+
+          utterance.onend = () => {
+            if (token === this.sessionToken) {
+              this.setState({ voiceUnavailable: false })
+              devLog('browser speak completed', { sessionToken: token })
+            }
+            resolve()
+          }
+          utterance.onerror = (event) => {
+            devLog('browser speak error', event)
+            if (token === this.sessionToken) {
+              this.setState({ voiceUnavailable: true })
+            }
+            reject(event)
+          }
+
+          window.speechSynthesis.speak(utterance)
         })
-      } catch (error) {
-        devLog('native speak error', error)
-      } finally {
-        if (token === this.sessionToken) {
-          devLog('speak completed', { sessionToken: token })
-          this.setState({ isSpeaking: false, isPaused: false, status: 'idle' })
-        }
+      } else {
+        this.setState({ voiceUnavailable: true })
       }
-      return
+    } catch (error) {
+      devLog('speak failed', formatError(error))
+      if (token === this.sessionToken) {
+        this.setState({ voiceUnavailable: true })
+      }
+    } finally {
+      if (token === this.sessionToken) {
+        this.setState({ isSpeaking: false, isPaused: false, status: 'idle' })
+      }
     }
-
-    if (typeof window === 'undefined' || !window.speechSynthesis) {
-      this.setState({ isSpeaking: false, isPaused: false, status: 'idle' })
-      return
-    }
-
-    await new Promise<void>((resolve) => {
-      const utterance = new SpeechSynthesisUtterance(normalized)
-      utterance.lang = SPEECH_LANG
-      utterance.rate = rate
-      utterance.pitch = pitch
-      utterance.volume = volume
-      const voice = this.pickBrowserVoice(settings)
-      if (voice) utterance.voice = voice
-
-      utterance.onend = () => {
-        if (token === this.sessionToken) {
-          devLog('speak completed', { sessionToken: token })
-          this.setState({ isSpeaking: false, isPaused: false, status: 'idle' })
-        }
-        resolve()
-      }
-      utterance.onerror = () => {
-        if (token === this.sessionToken) {
-          this.setState({ isSpeaking: false, isPaused: false, status: 'idle' })
-        }
-        resolve()
-      }
-
-      window.speechSynthesis.speak(utterance)
-    })
   }
 
   async replay(text: string, settings: AppSettings): Promise<void> {
@@ -419,12 +471,7 @@ class TextToSpeechService {
   }
 
   async pause(): Promise<void> {
-    if (!this.isSpeaking || this.isPaused) return
-
-    if (isNativeAndroid()) {
-      devLog('pause unavailable on Android')
-      return
-    }
+    if (!this.isSpeaking || this.isPaused || isAndroidNative()) return
 
     if (typeof window !== 'undefined' && window.speechSynthesis?.speaking && !window.speechSynthesis.paused) {
       window.speechSynthesis.pause()
@@ -436,7 +483,7 @@ class TextToSpeechService {
   async resume(settings: AppSettings): Promise<void> {
     if (!this.isPaused) return
 
-    if (isNativeAndroid()) {
+    if (isAndroidNative()) {
       await this.replay(this.currentText, settings)
       return
     }
@@ -444,7 +491,6 @@ class TextToSpeechService {
     if (typeof window !== 'undefined' && window.speechSynthesis?.paused) {
       window.speechSynthesis.resume()
       this.setState({ isSpeaking: true, isPaused: false, status: 'speaking' })
-      devLog('browser resumed')
       return
     }
 
@@ -453,11 +499,8 @@ class TextToSpeechService {
     }
   }
 
-  async initializeCatalog(settings: AppSettings) {
-    await this.ensureVoiceCatalog(settings)
-  }
-
   async testVoice(settings: AppSettings): Promise<void> {
+    if (!settings.soundEnabled || settings.voiceVolume <= 0) return
     await this.speak(TEST_VOICE_PHRASE, settings)
   }
 }

@@ -8,7 +8,7 @@ interface VoiceExplanationPanelProps {
   isSpeaking: boolean
   isPaused: boolean
   status: TtsStatus
-  voiceAvailable: boolean
+  voiceUnavailable: boolean
   onPlay: () => void
   onPause: () => void
   onResume: () => void
@@ -21,7 +21,7 @@ export function VoiceExplanationPanel({
   isSpeaking,
   isPaused,
   status,
-  voiceAvailable,
+  voiceUnavailable,
   onPlay,
   onPause,
   onResume,
@@ -33,8 +33,12 @@ export function VoiceExplanationPanel({
   const isAndroid = Capacitor.getPlatform() === 'android'
 
   const statusMessage = (() => {
-    if (voiceDisabled) return 'Voice explanations are off. Enable sound and voice explanations in Settings to listen.'
-    if (!voiceAvailable) return 'Install an English voice. Open Android Settings, then Language and input, Text-to-speech output, and install or update Google Speech Services with an English United States voice.'
+    if (voiceDisabled) {
+      return 'Voice explanations are off. Enable sound and voice explanations in Settings to listen.'
+    }
+    if (voiceUnavailable) {
+      return 'Voice unavailable. Install or update Google Speech Services with an English voice, then tap Test voice in Settings.'
+    }
     if (isSpeaking) return 'Speaking…'
     if (status === 'stopped') return 'Stopped.'
     if (isPaused) return 'Paused.'
@@ -54,14 +58,8 @@ export function VoiceExplanationPanel({
       </div>
 
       {statusMessage && (
-        <p className="voice-panel-note" role="status" aria-live="polite">
+        <p className={`voice-panel-note ${voiceUnavailable ? 'voice-panel-warning' : ''}`} role="status" aria-live="polite">
           {statusMessage}
-        </p>
-      )}
-
-      {!voiceAvailable && !voiceDisabled && (
-        <p className="voice-panel-warning" role="alert">
-          Voice unavailable. Install an English voice pack to hear explanations.
         </p>
       )}
 
@@ -70,7 +68,7 @@ export function VoiceExplanationPanel({
           type="button"
           className="btn btn-ghost voice-btn"
           onClick={isPaused ? onResume : onPlay}
-          disabled={voiceDisabled || !voiceAvailable || isSpeaking}
+          disabled={voiceDisabled || isSpeaking}
           aria-label={isPaused ? 'Resume explanation' : 'Play explanation'}
         >
           {isPaused && showBrowserPause ? 'Resume' : 'Play explanation'}
@@ -81,7 +79,7 @@ export function VoiceExplanationPanel({
             type="button"
             className="btn btn-ghost voice-btn"
             onClick={onPause}
-            disabled={voiceDisabled || !voiceAvailable || !isSpeaking}
+            disabled={voiceDisabled || !isSpeaking}
             aria-label="Pause explanation"
           >
             Pause
@@ -92,7 +90,7 @@ export function VoiceExplanationPanel({
           type="button"
           className="btn btn-ghost voice-btn"
           onClick={onStop}
-          disabled={voiceDisabled || !voiceAvailable || (!isSpeaking && !isPaused)}
+          disabled={voiceDisabled || (!isSpeaking && !isPaused)}
           aria-label="Stop explanation"
         >
           Stop
@@ -102,14 +100,14 @@ export function VoiceExplanationPanel({
           type="button"
           className="btn btn-ghost voice-btn"
           onClick={onReplay}
-          disabled={voiceDisabled || !voiceAvailable}
+          disabled={voiceDisabled}
           aria-label="Replay explanation from beginning"
         >
           Replay from beginning
         </button>
       </div>
 
-      {isAndroid && !voiceDisabled && voiceAvailable && (
+      {isAndroid && !voiceDisabled && !voiceUnavailable && (
         <p className="voice-panel-hint">Pause is not available on Android. Use Stop, then Play or Replay.</p>
       )}
     </section>

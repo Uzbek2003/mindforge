@@ -49,7 +49,7 @@ export function useVoiceExplanation(settings: AppSettings) {
     isSpeaking: ttsState.isSpeaking,
     isPaused: ttsState.isPaused,
     status: ttsState.status,
-    voiceAvailable: ttsState.voiceAvailable,
+    voiceUnavailable: ttsState.voiceUnavailable,
     selectedVoice: ttsState.selectedVoice,
     play,
     pause,
