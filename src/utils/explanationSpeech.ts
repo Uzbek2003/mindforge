@@ -1,4 +1,5 @@
 import type { Puzzle } from '../types'
+import { normalizeSpeechText } from './speechText'
 
 export function buildExplanationSpeech(
   puzzle: Puzzle,
@@ -9,13 +10,15 @@ export function buildExplanationSpeech(
   const correctAnswer = puzzle.options[puzzle.correctIndex]
   const yourAnswer = selectedIndex != null ? puzzle.options[selectedIndex] : null
 
+  let script: string
+
   if (correct) {
-    return `Correct. The answer is ${correctAnswer}. ${puzzle.explanation}`
+    script = `Correct. The answer is ${correctAnswer}. ${puzzle.explanation}`
+  } else if (timedOut || yourAnswer == null) {
+    script = `Not quite. Time ran out before you answered. The correct answer is ${correctAnswer}. ${puzzle.explanation}`
+  } else {
+    script = `Not quite. You selected ${yourAnswer}. The correct answer is ${correctAnswer}. ${puzzle.explanation}`
   }
 
-  if (timedOut || yourAnswer == null) {
-    return `Not quite. Time ran out before you answered. The correct answer is ${correctAnswer}. ${puzzle.explanation}`
-  }
-
-  return `Not quite. Your answer was ${yourAnswer}. The correct answer is ${correctAnswer}. ${puzzle.explanation}`
+  return normalizeSpeechText(script)
 }

@@ -181,7 +181,7 @@ export function PuzzleGame({
   }, [handleTimeout, puzzle?.id, revealed, timeLimit])
 
   const handleNext = useCallback(() => {
-    if (settings.stopSpeechOnLeave) voice.stop()
+    voice.stop()
     answeringRef.current = false
     setReported(false)
     setTimedOut(false)
@@ -216,7 +216,7 @@ export function PuzzleGame({
     }
 
     finishSession(sessionAnswers)
-  }, [completedIds, finishSession, index, isEndless, puzzleQueue, sessionAnswers, settings.stopSpeechOnLeave, timeLimit, voice])
+  }, [completedIds, finishSession, index, isEndless, puzzleQueue, sessionAnswers, timeLimit, voice])
 
   const isCorrect = selected === displayPuzzle?.correctIndex
   const speechText =
@@ -231,9 +231,8 @@ export function PuzzleGame({
   }, [displayPuzzle?.id, revealed, settings.voiceAutoPlay, settings.voiceExplanationsEnabled, settings.soundEnabled, speechText, voice])
 
   useEffect(() => {
-    if (!settings.stopSpeechOnLeave) return
     return () => voice.stop()
-  }, [index, settings.stopSpeechOnLeave, voice])
+  }, [index, voice])
 
   const handleReport = () => {
     if (!displayPuzzle || reported) return
@@ -372,8 +371,11 @@ export function PuzzleGame({
               settings={settings}
               isSpeaking={voice.isSpeaking}
               isPaused={voice.isPaused}
-              onPlay={() => (voice.isPaused ? voice.resume() : voice.play(speechText))}
+              status={voice.status}
+              voiceAvailable={voice.voiceAvailable}
+              onPlay={() => voice.play(speechText)}
               onPause={voice.pause}
+              onResume={voice.resume}
               onReplay={() => voice.replay(speechText)}
               onStop={voice.stop}
             />

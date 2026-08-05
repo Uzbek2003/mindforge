@@ -61,8 +61,8 @@ function App() {
   const [legalFromSettings, setLegalFromSettings] = useState(false)
 
   useEffect(() => {
-    preloadVoices().catch(() => undefined)
-  }, [])
+    preloadVoices(settings).catch(() => undefined)
+  }, [settings.voiceId])
 
   useEffect(() => {
     const legalScreen = legalPathToScreen(window.location.pathname)

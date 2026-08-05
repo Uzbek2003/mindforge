@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { APP_VERSION, SUPPORT_EMAIL } from '../constants'
 import type { AppSettings } from '../types'
-import { getVoices, type VoiceOption } from '../services/textToSpeech'
+import { getVoices, textToSpeechService, type VoiceOption } from '../services/textToSpeech'
+import { TEST_VOICE_PHRASE } from '../utils/speechText'
 import { Header } from './UI'
 
 interface SettingsScreenProps {
@@ -24,10 +25,33 @@ export function SettingsScreen({
   onBack,
 }: SettingsScreenProps) {
   const [voices, setVoices] = useState<VoiceOption[]>([])
+  const [testing, setTesting] = useState(false)
 
   useEffect(() => {
     void getVoices().then(setVoices)
   }, [])
+
+  useEffect(() => {
+    void textToSpeechService.initializeCatalog(settings)
+  }, [settings.voiceId, settings.voiceSpeed, settings.voicePitch, settings.voiceVolume])
+
+  const selectedVoice =
+    voices.find((voice) => voice.id === settings.voiceId) ??
+    (settings.voiceId == null ? voices[0] : null)
+
+  const handleVoiceChange = (voiceId: string | null) => {
+    void textToSpeechService.stop()
+    onUpdate('voiceId', voiceId)
+  }
+
+  const handleTestVoice = async () => {
+    setTesting(true)
+    try {
+      await textToSpeechService.testVoice(settings)
+    } finally {
+      setTesting(false)
+    }
+  }
 
   const handleReset = () => {
     if (
@@ -44,6 +68,8 @@ export function SettingsScreen({
     if (result === 'success') window.alert('Progress imported successfully.')
     if (result === 'error') window.alert('Could not import that file. Please choose a valid QuizNova export.')
   }
+
+  const englishVoiceAvailable = voices.length > 0
 
   return (
     <div className="screen settings-screen">
@@ -90,6 +116,19 @@ export function SettingsScreen({
         <p className="setting-description">
           Optional spoken explanations with a deep, calm mentor-style voice. Written explanations always stay visible.
         </p>
+
+        {!englishVoiceAvailable && (
+          <p className="setting-warning" role="alert">
+            Install an English voice. On Android, open Settings → Language and input → Text-to-speech output, then install or update Google Speech Services and download an English United States voice.
+          </p>
+        )}
+
+        {selectedVoice && (
+          <p className="setting-meta">
+            Selected voice: <strong>{selectedVoice.name}</strong> ({selectedVoice.lang.replace('_', '-')})
+          </p>
+        )}
+
         <label className="setting-row">
           <span>Voice explanations</span>
           <input
@@ -119,7 +158,7 @@ export function SettingsScreen({
           <span>Voice</span>
           <select
             value={settings.voiceId ?? ''}
-            onChange={(e) => onUpdate('voiceId', e.target.value || null)}
+            onChange={(e) => handleVoiceChange(e.target.value || null)}
             disabled={!settings.voiceExplanationsEnabled || voices.length === 0}
             aria-label="Select voice"
           >
@@ -170,6 +209,16 @@ export function SettingsScreen({
           />
           <span className="range-value">{Math.round(settings.voiceVolume * 100)}%</span>
         </label>
+        <button
+          type="button"
+          className="btn btn-ghost setting-btn"
+          onClick={handleTestVoice}
+          disabled={!settings.voiceExplanationsEnabled || !settings.soundEnabled || !englishVoiceAvailable || testing}
+          aria-label="Test selected voice"
+        >
+          {testing ? 'Testing voice…' : 'Test voice'}
+        </button>
+        <p className="setting-meta setting-test-phrase">{TEST_VOICE_PHRASE}</p>
       </section>
 
       <section className="panel">

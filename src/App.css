@@ -754,6 +754,19 @@
   margin: 0 0 0.75rem;
 }
 
+.voice-panel-warning {
+  font-size: 0.85rem;
+  color: var(--wrong);
+  margin: 0 0 0.75rem;
+}
+
+.voice-panel-hint {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin: 0.65rem 0 0;
+  font-style: italic;
+}
+
 .voice-controls {
   display: flex;
   flex-wrap: wrap;
@@ -789,6 +802,17 @@
   font-size: 0.85rem;
   color: var(--text-muted);
   margin: 0 0 0.75rem;
+}
+
+.setting-warning {
+  font-size: 0.85rem;
+  color: var(--wrong);
+  margin: 0 0 0.75rem;
+  line-height: 1.45;
+}
+
+.setting-test-phrase {
+  font-style: italic;
 }
 
 .setting-select select {
