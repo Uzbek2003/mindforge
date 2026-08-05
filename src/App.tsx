@@ -88,7 +88,7 @@ function App() {
   useEffect(() => {
     if (!Capacitor.isNativePlatform()) return
     StatusBar.setStyle({ style: Style.Dark }).catch(() => undefined)
-    StatusBar.setBackgroundColor({ color: '#87ceeb' }).catch(() => undefined)
+    StatusBar.setBackgroundColor({ color: '#0f2744' }).catch(() => undefined)
 
     const sub = CapApp.addListener('backButton', ({ canGoBack }) => {
       if (screen !== 'home') {

@@ -2,8 +2,10 @@ import { useState } from 'react'
 import type { Category, Difficulty, LastSession, SessionMode } from '../types'
 import { ALL_PUZZLES, getPuzzles } from '../data'
 import { SESSION_MODE_CONFIG, UNLOCK_THRESHOLDS, DIFFICULTY_LABELS } from '../types'
+import { MIXED_ADVENTURE, WORLDS, getWorldByCategory } from '../config/worlds'
 import { getUnsolvedPuzzles } from '../utils/session'
-import { CategoryCard, DifficultyCard, Header, ProgressRing } from './UI'
+import { DifficultyCard, Header, ProgressRing } from './UI'
+import { WorldCard } from './WorldCard'
 
 interface HomeScreenProps {
   completedIds: number[]
@@ -25,15 +27,6 @@ interface HomeScreenProps {
   onOpenSettings: () => void
 }
 
-const CATEGORIES: (Category | 'all')[] = ['all', 'math', 'science', 'history', 'computer-science']
-const CATEGORY_DISPLAY: Record<Category | 'all', { icon: string; label: string }> = {
-  all: { icon: '✦', label: 'All Topics' },
-  math: { icon: '∑', label: 'Math' },
-  science: { icon: '⚗', label: 'Science' },
-  history: { icon: '🏛', label: 'History' },
-  'computer-science': { icon: '💻', label: 'Computer Science' },
-}
-
 const PLAY_MODES: SessionMode[] = ['quick', 'standard', 'challenge', 'full', 'endless']
 
 export function HomeScreen({
@@ -49,7 +42,7 @@ export function HomeScreen({
   onStart,
   onOpenSettings,
 }: HomeScreenProps) {
-  const [category, setCategory] = useState<Category | 'all'>('all')
+  const [category, setCategory] = useState<Category | 'all'>(WORLDS[0].category)
   const [difficulty, setDifficulty] = useState<Difficulty>('easy')
   const [mode, setMode] = useState<SessionMode>('standard')
 
@@ -64,6 +57,9 @@ export function HomeScreen({
           : getPuzzles({ category: cat })
     return puzzles.filter((p) => completedIds.includes(p.id)).length
   }
+
+  const selectedWorld =
+    category === 'all' ? MIXED_ADVENTURE : getWorldByCategory(category)
 
   const unsolvedCount =
     mode === 'daily'
@@ -91,35 +87,44 @@ export function HomeScreen({
     <div className="screen home-screen">
       <Header onSettings={onOpenSettings} />
 
-      <section className="hero-panel">
-        <div className="hero-text">
-          <h2>Sharpen your mind</h2>
-          <p>
-            Educational puzzle and trivia across math, science, history, and computer science.
-            Free, ad-free, and works offline on mobile.
-          </p>
-        </div>
-        <div className="stats-row">
+      <section className="home-hero">
+        <p className="home-eyebrow">Your learning journey</p>
+        <h2 className="home-title">Explore the worlds of QuizNova</h2>
+        <p className="home-subtitle">
+          Premium educational adventures across math, science, history, and coding — free, ad-free,
+          and ready offline.
+        </p>
+        <div className="home-stats">
           <ProgressRing value={totalCompleted} max={totalPuzzles} label="completed" />
-          <div className="stat-cards">
-            <div className="stat-card">
-              <span className="stat-value">{correctCount}</span>
-              <span className="stat-label">Correct answers</span>
+          <div className="home-stat-cards">
+            <div className="home-stat-card">
+              <span className="home-stat-value">{correctCount}</span>
+              <span className="home-stat-label">Correct answers</span>
             </div>
-            <div className="stat-card">
-              <span className="stat-value">{bestStreak}</span>
-              <span className="stat-label">Best streak</span>
+            <div className="home-stat-card">
+              <span className="home-stat-value">{bestStreak}</span>
+              <span className="home-stat-label">Best streak</span>
             </div>
           </div>
         </div>
       </section>
 
+      <button type="button" className="daily-banner" onClick={startDaily}>
+        <span className="daily-banner-icon" aria-hidden="true">
+          ☀
+        </span>
+        <span className="daily-banner-text">
+          <strong>Daily Challenge</strong>
+          <span>Five fresh puzzles across every world — resets each day</span>
+        </span>
+        <span className="daily-banner-cta">Play</span>
+      </button>
+
       {lastSession && (
         <section className="panel continue-panel">
-          <h3>Continue last session</h3>
+          <h3>Continue your quest</h3>
           <p className="panel-hint">
-            Resume where you left off — question {lastSession.index + 1} of{' '}
-            {lastSession.puzzleIds.length}.
+            Pick up at question {lastSession.index + 1} of {lastSession.puzzleIds.length}.
           </p>
           <button
             type="button"
@@ -131,64 +136,31 @@ export function HomeScreen({
         </section>
       )}
 
-      <section className="panel">
-        <h3>Daily challenge</h3>
-        <p className="panel-hint">Five mixed puzzles that change every day.</p>
-        <button type="button" className="btn btn-ghost" onClick={startDaily}>
-          Play daily challenge
-        </button>
-      </section>
-
-      <section className="panel">
-        <h3>Session length</h3>
-        <div className="mode-grid">
-          {PLAY_MODES.map((m) => (
-            <button
-              key={m}
-              type="button"
-              className={`mode-card ${mode === m ? 'selected' : ''}`}
-              onClick={() => setMode(m)}
-              aria-pressed={mode === m}
-            >
-              <span className="mode-label">{SESSION_MODE_CONFIG[m].label}</span>
-              <span className="mode-desc">{SESSION_MODE_CONFIG[m].description}</span>
-            </button>
-          ))}
+      <section className="world-map-section">
+        <div className="section-heading">
+          <h3>Choose a world</h3>
+          <p className="section-subtitle">Each world has its own questions and difficulty paths.</p>
         </div>
-      </section>
 
-      <section className="panel">
-        <h3>Choose a topic</h3>
-        <div className="category-grid">
-          {CATEGORIES.map((cat) => {
-            const total =
-              cat === 'all' ? ALL_PUZZLES.length : getPuzzles({ category: cat }).length
-            const completed = countCompleted(cat)
-            if (cat === 'all') {
-              return (
-                <button
-                  key={cat}
-                  type="button"
-                  className={`category-card ${category === cat ? 'selected' : ''}`}
-                  onClick={() => setCategory(cat)}
-                  aria-pressed={category === cat}
-                >
-                  <span className="category-icon">{CATEGORY_DISPLAY.all.icon}</span>
-                  <span className="category-name">{CATEGORY_DISPLAY.all.label}</span>
-                  <span className="category-progress">
-                    {completed}/{total}
-                  </span>
-                </button>
-              )
-            }
+        <div className="world-map-grid">
+          <WorldCard
+            world={MIXED_ADVENTURE}
+            completed={countCompleted('all')}
+            total={ALL_PUZZLES.length}
+            selected={category === 'all'}
+            onSelect={() => setCategory('all')}
+          />
+          {WORLDS.map((world) => {
+            const total = getPuzzles({ category: world.category }).length
+            const completed = countCompleted(world.category)
             return (
-              <CategoryCard
-                key={cat}
-                category={cat}
-                count={total}
+              <WorldCard
+                key={world.id}
+                world={world}
                 completed={completed}
-                selected={category === cat}
-                onSelect={() => setCategory(cat)}
+                total={total}
+                selected={category === world.category}
+                onSelect={() => setCategory(world.category)}
               />
             )
           })}
@@ -196,11 +168,21 @@ export function HomeScreen({
       </section>
 
       {mode !== 'daily' && (
-        <section className="panel">
-          <h3>Choose difficulty</h3>
-          <p className="panel-hint">
-            Easy is available from the start. Complete {UNLOCK_THRESHOLDS.medium} easy puzzles to
-            unlock Medium, then {UNLOCK_THRESHOLDS.hard} medium puzzles for Hard.
+        <section className="panel launch-panel">
+          <div className="launch-panel-header">
+            <span className="launch-world-icon" aria-hidden="true">
+              {selectedWorld.icon}
+            </span>
+            <div>
+              <h3>Enter {selectedWorld.shortName}</h3>
+              <p className="panel-hint">Select difficulty and session length, then launch.</p>
+            </div>
+          </div>
+
+          <h4 className="launch-subheading">Difficulty</h4>
+          <p className="panel-hint launch-unlock-hint">
+            Easy is open from the start. Complete {UNLOCK_THRESHOLDS.medium} easy puzzles to unlock
+            Medium, then {UNLOCK_THRESHOLDS.hard} medium for Hard.
           </p>
           <div className="difficulty-grid">
             {(['easy', 'medium', 'hard'] as Difficulty[]).map((d) => {
@@ -212,10 +194,10 @@ export function HomeScreen({
               const unlocked = isDifficultyUnlocked(d)
               let unlockHint = 'Locked'
               if (d === 'medium' && !unlocked) {
-                unlockHint = `Complete ${Math.max(0, UNLOCK_THRESHOLDS.medium - easyCompleted)} more easy`
+                unlockHint = `${Math.max(0, UNLOCK_THRESHOLDS.medium - easyCompleted)} easy left`
               }
               if (d === 'hard' && !unlocked) {
-                unlockHint = `Complete ${Math.max(0, UNLOCK_THRESHOLDS.hard - mediumCompleted)} more medium`
+                unlockHint = `${Math.max(0, UNLOCK_THRESHOLDS.hard - mediumCompleted)} medium left`
               }
               return (
                 <DifficultyCard
@@ -231,32 +213,48 @@ export function HomeScreen({
               )
             })}
           </div>
+
+          <h4 className="launch-subheading">Session length</h4>
+          <div className="mode-grid">
+            {PLAY_MODES.map((m) => (
+              <button
+                key={m}
+                type="button"
+                className={`mode-card ${mode === m ? 'selected' : ''}`}
+                onClick={() => setMode(m)}
+                aria-pressed={mode === m}
+              >
+                <span className="mode-label">{SESSION_MODE_CONFIG[m].label}</span>
+                <span className="mode-desc">{SESSION_MODE_CONFIG[m].description}</span>
+              </button>
+            ))}
+          </div>
         </section>
       )}
 
       <div className="action-row">
         <button
           type="button"
-          className="btn btn-primary btn-large"
+          className="btn btn-primary btn-large btn-launch"
           disabled={!canStart}
           onClick={startRegular}
         >
           {!canStart
             ? unsolvedCount === 0
-              ? 'All questions completed for this level'
-              : 'Select an unlocked difficulty'
-            : 'Start Playing'}
+              ? 'World complete for this difficulty'
+              : 'Unlock a higher difficulty to continue'
+            : `Launch ${selectedWorld.shortName}`}
         </button>
         {unsolvedCount > 0 && unsolvedCount < totalInSelection && (
           <p className="panel-hint start-hint">
             {unsolvedCount} new {DIFFICULTY_LABELS[difficulty].toLowerCase()} question
-            {unsolvedCount === 1 ? '' : 's'} remaining — no repeats until you finish them all.
+            {unsolvedCount === 1 ? '' : 's'} remaining — no repeats until the pool is cleared.
           </p>
         )}
       </div>
 
       <footer className="footer">
-        <p>100% free · No ads · Educational trivia for general audiences</p>
+        <p>100% free · No ads · Built for curious learners everywhere</p>
       </footer>
     </div>
   )

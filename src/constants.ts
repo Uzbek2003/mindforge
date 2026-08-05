@@ -1,5 +1,5 @@
 export const APP_NAME = 'QuizNova'
-export const APP_TAGLINE = 'Educational puzzle & trivia for everyone'
+export const APP_TAGLINE = 'Learn across four adventure worlds'
 export const APP_DESCRIPTION =
   'Free educational puzzle and trivia game covering math, science, history, and computer science.'
 export const SUPPORT_EMAIL = 'support@quiznova.app'

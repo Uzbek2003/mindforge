@@ -21,13 +21,14 @@
 .logo-mark {
   display: grid;
   place-items: center;
-  width: 2.5rem;
-  height: 2.5rem;
-  border-radius: 10px;
-  background: linear-gradient(135deg, #1e6fd9, #3b9eff);
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 14px;
+  background: linear-gradient(145deg, #2563eb, #7c3aed);
   color: white;
-  font-size: 1.1rem;
-  font-weight: 700;
+  font-size: 1.15rem;
+  font-weight: 800;
+  box-shadow: 0 8px 20px rgba(37, 99, 235, 0.35);
 }
 
 .header h1 {
@@ -38,10 +39,318 @@
 
 .tagline {
   font-size: 0.78rem;
-  color: var(--text-muted);
+  color: rgba(255, 255, 255, 0.72);
 }
 
-/* Hero */
+.header h1 {
+  color: #fff;
+}
+
+.header .btn-ghost {
+  color: rgba(255, 255, 255, 0.85);
+  border-color: rgba(255, 255, 255, 0.25);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.header .btn-ghost:hover {
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.45);
+  background: rgba(255, 255, 255, 0.14);
+}
+
+/* Home — premium game shell */
+.home-screen {
+  padding-bottom: 3rem;
+}
+
+.home-hero {
+  margin-bottom: 1.25rem;
+}
+
+.home-eyebrow {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.65);
+  margin-bottom: 0.5rem;
+}
+
+.home-title {
+  font-size: clamp(1.65rem, 5vw, 2.1rem);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  color: #fff;
+  margin-bottom: 0.5rem;
+  line-height: 1.15;
+}
+
+.home-subtitle {
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 0.95rem;
+  max-width: 42ch;
+  margin-bottom: 1.25rem;
+}
+
+.home-stats {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: var(--radius-lg);
+  padding: 1rem 1.15rem;
+  backdrop-filter: blur(12px);
+}
+
+.home-stat-cards {
+  display: flex;
+  gap: 0.65rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.home-stat-card {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: var(--radius);
+  padding: 0.75rem 0.85rem;
+  min-width: 100px;
+}
+
+.home-stat-value {
+  display: block;
+  font-size: 1.45rem;
+  font-weight: 800;
+  color: #fff;
+}
+
+.home-stat-label {
+  font-size: 0.72rem;
+  color: rgba(255, 255, 255, 0.72);
+}
+
+.home-screen .ring-label,
+.home-screen .ring-label strong {
+  color: #fff;
+}
+
+.home-screen .ring-bg {
+  stroke: rgba(255, 255, 255, 0.2);
+}
+
+.home-screen .ring-fill {
+  stroke: #93c5fd;
+}
+
+.daily-banner {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  width: 100%;
+  margin-bottom: 1rem;
+  padding: 1rem 1.15rem;
+  border: none;
+  border-radius: var(--radius-lg);
+  background: linear-gradient(135deg, #f59e0b 0%, #fbbf24 45%, #fde68a 100%);
+  color: #78350f;
+  text-align: left;
+  box-shadow: 0 12px 32px rgba(245, 158, 11, 0.35);
+  transition: transform 0.15s ease, filter 0.15s ease;
+}
+
+.daily-banner:hover {
+  filter: brightness(1.03);
+  transform: translateY(-1px);
+}
+
+.daily-banner-icon {
+  font-size: 1.75rem;
+  line-height: 1;
+}
+
+.daily-banner-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.daily-banner-text strong {
+  font-size: 1rem;
+  font-weight: 800;
+}
+
+.daily-banner-text span {
+  font-size: 0.8rem;
+  opacity: 0.85;
+}
+
+.daily-banner-cta {
+  font-weight: 800;
+  font-size: 0.9rem;
+  padding: 0.45rem 0.85rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.55);
+}
+
+.world-map-section {
+  margin-bottom: 1rem;
+}
+
+.section-heading h3 {
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: rgba(255, 255, 255, 0.7);
+  margin-bottom: 0.35rem;
+}
+
+.section-subtitle {
+  font-size: 0.82rem;
+  color: rgba(255, 255, 255, 0.6);
+  margin-bottom: 0.85rem;
+}
+
+.world-map-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.75rem;
+}
+
+@media (min-width: 560px) {
+  .world-map-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.world-card {
+  position: relative;
+  overflow: hidden;
+  display: block;
+  width: 100%;
+  min-height: 132px;
+  padding: 0;
+  border: 2px solid transparent;
+  border-radius: var(--radius-lg);
+  background: var(--world-gradient);
+  color: #fff;
+  text-align: left;
+  box-shadow: var(--world-shadow);
+  transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.world-card:hover {
+  transform: translateY(-2px);
+}
+
+.world-card-selected {
+  border-color: rgba(255, 255, 255, 0.85);
+  box-shadow: var(--world-shadow), 0 0 0 3px rgba(255, 255, 255, 0.25);
+}
+
+.world-card-glow {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 85% 15%, rgba(255, 255, 255, 0.35), transparent 45%);
+  pointer-events: none;
+}
+
+.world-card-content {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 1rem 1.1rem;
+  height: 100%;
+}
+
+.world-card-icon {
+  font-size: 1.85rem;
+  line-height: 1;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.15));
+}
+
+.world-card-name {
+  display: block;
+  font-size: 1.05rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
+}
+
+.world-card-tagline {
+  display: block;
+  font-size: 0.78rem;
+  opacity: 0.92;
+  line-height: 1.35;
+  max-width: 28ch;
+}
+
+.world-card-progress-track {
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.28);
+  overflow: hidden;
+}
+
+.world-card-progress-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.92);
+  transition: width 0.35s ease;
+}
+
+.world-card-progress-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  opacity: 0.9;
+}
+
+.launch-panel {
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow);
+}
+
+.launch-panel-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.85rem;
+  margin-bottom: 1rem;
+}
+
+.launch-world-icon {
+  font-size: 2rem;
+  line-height: 1;
+}
+
+.launch-subheading {
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  margin: 1rem 0 0.5rem;
+}
+
+.launch-unlock-hint {
+  margin-bottom: 0.65rem;
+}
+
+.btn-launch {
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  box-shadow: 0 12px 28px rgba(37, 99, 235, 0.35);
+}
+
+.home-screen .footer p {
+  color: rgba(255, 255, 255, 0.55);
+}
+
+/* Hero (legacy — other screens) */
 .hero-panel {
   background: var(--bg-panel);
   border: 1px solid var(--border);
@@ -288,7 +597,7 @@
 }
 
 .btn-primary {
-  background: linear-gradient(135deg, #1e6fd9, #3b9eff);
+  background: linear-gradient(135deg, #2563eb, #3b82f6);
   color: white;
 }
 

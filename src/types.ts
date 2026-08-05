@@ -70,15 +70,15 @@ export interface SessionResult {
 }
 
 export const CATEGORY_LABELS: Record<Category, string> = {
-  math: 'Math',
-  science: 'Science',
-  history: 'History',
-  'computer-science': 'Computer Science',
+  math: 'Math Kingdom',
+  science: 'Science Lab',
+  history: 'History Museum',
+  'computer-science': 'Coding Academy',
 }
 
 export const CATEGORY_ICONS: Record<Category, string> = {
-  math: '∑',
-  science: '⚗',
+  math: '📘',
+  science: '🧪',
   history: '🏛',
   'computer-science': '💻',
 }

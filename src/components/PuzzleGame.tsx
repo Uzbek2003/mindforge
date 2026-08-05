@@ -251,7 +251,7 @@ export function PuzzleGame({
       <Header onHome={handleExit} showHome />
 
       <div className="game-meta" role="status" aria-live="polite">
-        <span className="badge">{category === 'all' ? 'Mixed' : CATEGORY_LABELS[category]}</span>
+        <span className="badge">{category === 'all' ? 'Grand Adventure' : CATEGORY_LABELS[category]}</span>
         <span className={`badge badge-${difficulty}`}>{DIFFICULTY_LABELS[difficulty]}</span>
         <span className="badge badge-muted">{SESSION_MODE_CONFIG[mode].label}</span>
         <span
