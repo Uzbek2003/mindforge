@@ -6,7 +6,9 @@ import { buildSessionQueue, buildEndlessExtension, calcSessionStreak } from '../
 import { hapticError, hapticSuccess } from '../utils/haptics'
 import { playCorrectSound, playWrongSound } from '../utils/sounds'
 import { buildQuestionReportEmail } from '../utils/report'
-import { speakBatmanIncorrect, stopBatmanVoice } from '../utils/batmanVoice'
+import { buildExplanationSpeech } from '../utils/explanationSpeech'
+import { useVoiceExplanation } from '../hooks/useVoiceExplanation'
+import { VoiceExplanationPanel } from './VoiceExplanationPanel'
 import { Header } from './UI'
 
 interface PuzzleGameProps {
@@ -66,6 +68,7 @@ export function PuzzleGame({
   const [timeLeft, setTimeLeft] = useState(timeLimit)
   const startedAt = useRef(resumeSession?.startedAt ?? Date.now())
   const answeringRef = useRef(false)
+  const voice = useVoiceExplanation(settings)
 
   const puzzle = puzzleQueue[index]
   const displayPuzzle = revealed && answeredPuzzle ? answeredPuzzle : puzzle
@@ -74,8 +77,8 @@ export function PuzzleGame({
   const isEndless = mode === 'endless'
 
   useEffect(() => {
-    return () => stopBatmanVoice()
-  }, [])
+    return () => voice.stop()
+  }, [voice])
 
   useEffect(() => {
     if (!puzzle || puzzleQueue.length === 0) return
@@ -92,7 +95,7 @@ export function PuzzleGame({
 
   const finishSession = useCallback(
     (answers: SessionAnswer[]) => {
-      stopBatmanVoice()
+      voice.stop()
       const correct = answers.filter((a) => a.correct).length
       const incorrect = answers.length - correct
       onSessionUpdate(null)
@@ -109,7 +112,7 @@ export function PuzzleGame({
         mode,
       })
     },
-    [category, difficulty, mode, onFinish, onSessionUpdate],
+    [category, difficulty, mode, onFinish, onSessionUpdate, voice],
   )
 
   const revealAnswer = useCallback(
@@ -141,13 +144,7 @@ export function PuzzleGame({
       } else {
         playWrongSound(settings.soundEnabled)
         await hapticError(settings.vibrationEnabled)
-        speakBatmanIncorrect(
-          currentPuzzle.explanation,
-          currentPuzzle.options[currentPuzzle.correctIndex],
-          settings.soundEnabled,
-        )
       }
-
     },
     [onComplete, settings.soundEnabled, settings.vibrationEnabled],
   )
@@ -184,7 +181,7 @@ export function PuzzleGame({
   }, [handleTimeout, puzzle?.id, revealed, timeLimit])
 
   const handleNext = useCallback(() => {
-    stopBatmanVoice()
+    if (settings.stopSpeechOnLeave) voice.stop()
     answeringRef.current = false
     setReported(false)
     setTimedOut(false)
@@ -219,7 +216,24 @@ export function PuzzleGame({
     }
 
     finishSession(sessionAnswers)
-  }, [completedIds, finishSession, index, isEndless, puzzleQueue, sessionAnswers, timeLimit])
+  }, [completedIds, finishSession, index, isEndless, puzzleQueue, sessionAnswers, settings.stopSpeechOnLeave, timeLimit, voice])
+
+  const isCorrect = selected === displayPuzzle?.correctIndex
+  const speechText =
+    revealed && displayPuzzle
+      ? buildExplanationSpeech(displayPuzzle, selected, Boolean(isCorrect), timedOut)
+      : ''
+
+  useEffect(() => {
+    if (!revealed || !displayPuzzle || !speechText) return
+    if (!settings.voiceAutoPlay || !settings.voiceExplanationsEnabled || !settings.soundEnabled) return
+    voice.play(speechText)
+  }, [displayPuzzle?.id, revealed, settings.voiceAutoPlay, settings.voiceExplanationsEnabled, settings.soundEnabled, speechText, voice])
+
+  useEffect(() => {
+    if (!settings.stopSpeechOnLeave) return
+    return () => voice.stop()
+  }, [index, settings.stopSpeechOnLeave, voice])
 
   const handleReport = () => {
     if (!displayPuzzle || reported) return
@@ -228,17 +242,22 @@ export function PuzzleGame({
     setReported(true)
   }
 
+  const handleExit = useCallback(() => {
+    voice.stop()
+    onExit()
+  }, [onExit, voice])
+
   if (!puzzle || puzzleQueue.length === 0) {
     return (
       <div className="screen">
-        <Header onHome={onExit} showHome />
+        <Header onHome={handleExit} showHome />
         <div className="empty-state">
           <h2>All questions completed!</h2>
           <p>
             You&apos;ve answered every available {DIFFICULTY_LABELS[difficulty].toLowerCase()} puzzle
             in this selection. Try another category or difficulty level.
           </p>
-          <button type="button" className="btn btn-primary" onClick={onExit}>
+          <button type="button" className="btn btn-primary" onClick={handleExit}>
             Back to home
           </button>
         </div>
@@ -246,7 +265,6 @@ export function PuzzleGame({
     )
   }
 
-  const isCorrect = selected === displayPuzzle.correctIndex
   const yourAnswer =
     selected != null ? displayPuzzle.options[selected] : null
   const correctAnswer = displayPuzzle.options[displayPuzzle.correctIndex]
@@ -256,7 +274,7 @@ export function PuzzleGame({
 
   return (
     <div className="screen game-screen">
-      <Header onHome={onExit} showHome />
+      <Header onHome={handleExit} showHome />
 
       <div className="game-meta" role="status" aria-live="polite">
         <span className="badge">{category === 'all' ? 'Mixed' : CATEGORY_LABELS[category]}</span>
@@ -350,11 +368,15 @@ export function PuzzleGame({
               </strong>
             </div>
 
-            {!isCorrect && (
-              <p className="batman-voice-note" role="note">
-                🦇 Batman voice is explaining the answer{settings.soundEnabled ? '' : ' (enable sound in Settings)'}.
-              </p>
-            )}
+            <VoiceExplanationPanel
+              settings={settings}
+              isSpeaking={voice.isSpeaking}
+              isPaused={voice.isPaused}
+              onPlay={() => (voice.isPaused ? voice.resume() : voice.play(speechText))}
+              onPause={voice.pause}
+              onReplay={() => voice.replay(speechText)}
+              onStop={voice.stop}
+            />
 
             {!isCorrect && timedOut && (
               <p className="feedback-answer">

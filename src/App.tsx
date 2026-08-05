@@ -12,6 +12,7 @@ import { ResultsScreen } from './components/ResultsScreen'
 import { SettingsScreen } from './components/SettingsScreen'
 import { LegalPage } from './components/LegalPage'
 import { legalPathToScreen, screenToLegalPath } from './utils/routes'
+import { preloadVoices, textToSpeechService } from './services/textToSpeech'
 import './App.css'
 
 type Screen =
@@ -60,6 +61,10 @@ function App() {
   const [legalFromSettings, setLegalFromSettings] = useState(false)
 
   useEffect(() => {
+    preloadVoices().catch(() => undefined)
+  }, [])
+
+  useEffect(() => {
     const legalScreen = legalPathToScreen(window.location.pathname)
     if (legalScreen) setScreen(legalScreen)
   }, [])
@@ -84,6 +89,18 @@ function App() {
     window.history.pushState(null, '', screenToLegalPath(page))
     setScreen(page)
   }
+
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return
+
+    const stateSub = CapApp.addListener('appStateChange', ({ isActive }) => {
+      if (!isActive) void textToSpeechService.stop()
+    })
+
+    return () => {
+      stateSub.then((handle) => handle.remove())
+    }
+  }, [])
 
   useEffect(() => {
     if (!Capacitor.isNativePlatform()) return
@@ -119,6 +136,7 @@ function App() {
   }
 
   const handleFinish = (result: SessionResult) => {
+    void textToSpeechService.stop()
     clearLastSession()
     setSessionResult(result)
     setPlayConfig(null)
@@ -127,6 +145,7 @@ function App() {
   }
 
   const handleExitPlay = () => {
+    void textToSpeechService.stop()
     setPlayConfig(null)
     setResumeSession(null)
     setScreen('home')

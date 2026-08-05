@@ -4,6 +4,8 @@ export type Difficulty = 'easy' | 'medium' | 'hard'
 export type SessionMode = 'quick' | 'standard' | 'challenge' | 'full' | 'endless' | 'daily'
 
 export type TextSize = 'normal' | 'large'
+export type VoiceSpeed = 'slow' | 'normal' | 'fast'
+export type VoicePitch = 'deep' | 'normal'
 
 export interface Puzzle {
   id: number
@@ -28,6 +30,13 @@ export interface AppSettings {
   vibrationEnabled: boolean
   textSize: TextSize
   reduceAnimations: boolean
+  voiceExplanationsEnabled: boolean
+  voiceAutoPlay: boolean
+  voiceId: string | null
+  voiceSpeed: VoiceSpeed
+  voicePitch: VoicePitch
+  voiceVolume: number
+  stopSpeechOnLeave: boolean
 }
 
 export interface LastSession {
@@ -109,4 +118,11 @@ export const DEFAULT_SETTINGS: AppSettings = {
   vibrationEnabled: true,
   textSize: 'normal',
   reduceAnimations: false,
+  voiceExplanationsEnabled: true,
+  voiceAutoPlay: true,
+  voiceId: null,
+  voiceSpeed: 'normal',
+  voicePitch: 'deep',
+  voiceVolume: 1,
+  stopSpeechOnLeave: true,
 }

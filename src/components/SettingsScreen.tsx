@@ -1,5 +1,7 @@
+import { useEffect, useState } from 'react'
 import { APP_VERSION, SUPPORT_EMAIL } from '../constants'
 import type { AppSettings } from '../types'
+import { getVoices, type VoiceOption } from '../services/textToSpeech'
 import { Header } from './UI'
 
 interface SettingsScreenProps {
@@ -21,6 +23,12 @@ export function SettingsScreen({
   onOpenLegal,
   onBack,
 }: SettingsScreenProps) {
+  const [voices, setVoices] = useState<VoiceOption[]>([])
+
+  useEffect(() => {
+    void getVoices().then(setVoices)
+  }, [])
+
   const handleReset = () => {
     if (
       window.confirm(
@@ -74,6 +82,93 @@ export function SettingsScreen({
             checked={settings.reduceAnimations}
             onChange={(e) => onUpdate('reduceAnimations', e.target.checked)}
           />
+        </label>
+      </section>
+
+      <section className="panel">
+        <h3>Night Guardian voice</h3>
+        <p className="setting-description">
+          Optional spoken explanations with a deep, calm mentor-style voice. Written explanations always stay visible.
+        </p>
+        <label className="setting-row">
+          <span>Voice explanations</span>
+          <input
+            type="checkbox"
+            checked={settings.voiceExplanationsEnabled}
+            onChange={(e) => onUpdate('voiceExplanationsEnabled', e.target.checked)}
+          />
+        </label>
+        <label className="setting-row">
+          <span>Auto-play explanations</span>
+          <input
+            type="checkbox"
+            checked={settings.voiceAutoPlay}
+            onChange={(e) => onUpdate('voiceAutoPlay', e.target.checked)}
+            disabled={!settings.voiceExplanationsEnabled}
+          />
+        </label>
+        <label className="setting-row">
+          <span>Stop speech when leaving a question</span>
+          <input
+            type="checkbox"
+            checked={settings.stopSpeechOnLeave}
+            onChange={(e) => onUpdate('stopSpeechOnLeave', e.target.checked)}
+          />
+        </label>
+        <label className="setting-row setting-select">
+          <span>Voice</span>
+          <select
+            value={settings.voiceId ?? ''}
+            onChange={(e) => onUpdate('voiceId', e.target.value || null)}
+            disabled={!settings.voiceExplanationsEnabled || voices.length === 0}
+            aria-label="Select voice"
+          >
+            <option value="">Best available English voice</option>
+            {voices.map((voice) => (
+              <option key={voice.id} value={voice.id}>
+                {voice.name} ({voice.lang})
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="setting-row setting-select">
+          <span>Speaking speed</span>
+          <select
+            value={settings.voiceSpeed}
+            onChange={(e) => onUpdate('voiceSpeed', e.target.value as AppSettings['voiceSpeed'])}
+            disabled={!settings.voiceExplanationsEnabled}
+            aria-label="Speaking speed"
+          >
+            <option value="slow">Slow</option>
+            <option value="normal">Normal</option>
+            <option value="fast">Fast</option>
+          </select>
+        </label>
+        <label className="setting-row setting-select">
+          <span>Pitch</span>
+          <select
+            value={settings.voicePitch}
+            onChange={(e) => onUpdate('voicePitch', e.target.value as AppSettings['voicePitch'])}
+            disabled={!settings.voiceExplanationsEnabled}
+            aria-label="Voice pitch"
+          >
+            <option value="deep">Deep</option>
+            <option value="normal">Normal</option>
+          </select>
+        </label>
+        <label className="setting-row setting-range">
+          <span>Volume</span>
+          <input
+            type="range"
+            min={0}
+            max={1}
+            step={0.05}
+            value={settings.voiceVolume}
+            onChange={(e) => onUpdate('voiceVolume', Number(e.target.value))}
+            disabled={!settings.voiceExplanationsEnabled || !settings.soundEnabled}
+            aria-label="Voice volume"
+          />
+          <span className="range-value">{Math.round(settings.voiceVolume * 100)}%</span>
         </label>
       </section>
 
