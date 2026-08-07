@@ -2,6 +2,7 @@ import { Capacitor } from '@capacitor/core'
 import type { AppSettings } from '../types'
 import { browserPauseSupported } from '../services/textToSpeech'
 import type { TtsStatus } from '../services/textToSpeech'
+import { VOICE_PERSONA_PANEL_COPY, normalizeVoicePersona } from '../utils/voicePersona'
 
 interface VoiceExplanationPanelProps {
   settings: AppSettings
@@ -31,6 +32,7 @@ export function VoiceExplanationPanel({
   const voiceDisabled = !settings.voiceExplanationsEnabled || !settings.soundEnabled
   const showBrowserPause = browserPauseSupported()
   const isAndroid = Capacitor.getPlatform() === 'android'
+  const personaCopy = VOICE_PERSONA_PANEL_COPY[normalizeVoicePersona(settings.voicePersona)]
 
   const statusMessage = (() => {
     if (voiceDisabled) {
@@ -46,14 +48,14 @@ export function VoiceExplanationPanel({
   })()
 
   return (
-    <section className="voice-panel" aria-label="Night Guardian voice explanation controls">
+    <section className="voice-panel" aria-label={personaCopy.ariaLabel}>
       <div className="voice-panel-header">
         <span className={`speaker-icon ${isSpeaking ? 'speaker-active' : ''}`} aria-hidden="true">
           🔊
         </span>
         <div>
-          <strong>Night Guardian</strong>
-          <p className="voice-panel-subtitle">Deep mentor-style spoken explanations</p>
+          <strong>{personaCopy.title}</strong>
+          <p className="voice-panel-subtitle">{personaCopy.subtitle}</p>
         </div>
       </div>
 

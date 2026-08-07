@@ -1,8 +1,13 @@
 import { Capacitor } from '@capacitor/core'
 import { TextToSpeech, QueueStrategy, type TTSOptions } from '@capacitor-community/text-to-speech'
 import type { AppSettings } from '../types'
-import { normalizeSpeechText, TEST_VOICE_PHRASE } from '../utils/speechText'
+import { getTestVoicePhrase, normalizeSpeechText } from '../utils/speechText'
 import { isDirectNativeTestRunning } from './directNativeTtsTest'
+import {
+  pickNightGuardianPreferredVoice,
+  pickPresidentPreferredVoice,
+  type PersonaVoiceCandidate,
+} from '../utils/voicePersona'
 import {
   resolveSpeechPitch,
   resolveSpeechRate,
@@ -93,7 +98,13 @@ class TextToSpeechService {
   private voiceUnavailable = false
   private currentText = ''
   private listeners = new Set<StateListener>()
-  private nativeVoices: Array<{ name: string; lang: string; voiceURI: string; default?: boolean }> = []
+  private nativeVoices: Array<{
+    name: string
+    lang: string
+    voiceURI: string
+    localService?: boolean
+    default?: boolean
+  }> = []
   private supportedLanguages: string[] = []
   private selectedVoice: VoiceOption | null = null
   private language = 'en'
@@ -176,6 +187,67 @@ class TextToSpeechService {
     return selectedIndex
   }
 
+  private nativeCandidates(): PersonaVoiceCandidate[] {
+    return this.nativeVoices.map((voice, index) => ({
+      id: String(index),
+      name: voice.name,
+      lang: voice.lang.replace(/_/g, '-'),
+      voiceURI: voice.voiceURI,
+      localService: voice.localService,
+    }))
+  }
+
+  private browserCandidates(): PersonaVoiceCandidate[] {
+    const voices = typeof window !== 'undefined' ? window.speechSynthesis.getVoices() : []
+    return voices.map((voice) => ({
+      id: voice.voiceURI || voice.name,
+      name: voice.name,
+      lang: voice.lang,
+      voiceURI: voice.voiceURI,
+      localService: voice.localService,
+    }))
+  }
+
+  /** Persona preferred voice when the user left Voice on System default. */
+  private resolvePersonaPreferredNativeIndex(settings: AppSettings): number | undefined {
+    if (settings.voiceId != null && settings.voiceId !== '') return undefined
+
+    const candidates = this.nativeCandidates()
+    const preferred =
+      settings.voicePersona === 'president'
+        ? pickPresidentPreferredVoice(candidates)
+        : settings.voicePersona === 'night-guardian'
+          ? pickNightGuardianPreferredVoice(candidates)
+          : null
+
+    if (!preferred) return undefined
+    const index = Number(preferred.id)
+    if (Number.isNaN(index) || !this.nativeVoices[index]) return undefined
+    return index
+  }
+
+  private resolvePersonaPreferredBrowserVoice(
+    settings: AppSettings,
+  ): SpeechSynthesisVoice | undefined {
+    if (settings.voiceId) return undefined
+
+    const voices = typeof window !== 'undefined' ? window.speechSynthesis.getVoices() : []
+    const preferred =
+      settings.voicePersona === 'president'
+        ? pickPresidentPreferredVoice(this.browserCandidates())
+        : settings.voicePersona === 'night-guardian'
+          ? pickNightGuardianPreferredVoice(this.browserCandidates())
+          : null
+
+    if (!preferred) return undefined
+    return voices.find(
+      (voice) =>
+        voice.voiceURI === preferred.voiceURI ||
+        voice.voiceURI === preferred.id ||
+        voice.name === preferred.name,
+    )
+  }
+
   private clearInvalidStoredVoice(settings: AppSettings) {
     if (settings.voiceId == null || settings.voiceId === '') return
     if (!isNativeTtsPath()) return
@@ -203,7 +275,9 @@ class TextToSpeechService {
 
   private updateSelectedVoice(settings: AppSettings) {
     if (isNativeTtsPath()) {
-      const index = this.resolveExplicitNativeVoiceIndex(settings)
+      const index =
+        this.resolveExplicitNativeVoiceIndex(settings) ??
+        this.resolvePersonaPreferredNativeIndex(settings)
       if (index == null) {
         this.selectedVoice = DEFAULT_SYSTEM_VOICE
         this.language = 'en'
@@ -219,7 +293,7 @@ class TextToSpeechService {
       return
     }
 
-    const voice = this.pickBrowserVoice(settings)
+    const voice = this.pickBrowserVoice(settings) ?? this.resolvePersonaPreferredBrowserVoice(settings)
     if (!voice) {
       this.selectedVoice = DEFAULT_SYSTEM_VOICE
       this.language = 'en'
@@ -316,11 +390,14 @@ class TextToSpeechService {
   }
 
   private async nativeSpeak(text: string, settings: AppSettings, token: number): Promise<void> {
-    const explicitVoice = this.resolveExplicitNativeVoiceIndex(settings)
+    let explicitVoice = this.resolveExplicitNativeVoiceIndex(settings)
 
     if (settings.voiceId != null && settings.voiceId !== '' && explicitVoice === undefined && this.nativeVoices.length > 0) {
       this.onClearVoiceId?.()
       this.updateSelectedVoice({ ...settings, voiceId: null })
+      explicitVoice = this.resolvePersonaPreferredNativeIndex({ ...settings, voiceId: null })
+    } else if (explicitVoice === undefined) {
+      explicitVoice = this.resolvePersonaPreferredNativeIndex(settings)
     }
 
     devLog('platform', Capacitor.getPlatform(), 'isNative', Capacitor.isNativePlatform())
@@ -416,9 +493,17 @@ class TextToSpeechService {
         const rate = this.resolveRate(settings)
         const pitch = this.resolvePitch(settings)
         const volume = this.resolveVolume(settings)
-        const voice = this.pickBrowserVoice(settings)
+        const voice =
+          this.pickBrowserVoice(settings) ?? this.resolvePersonaPreferredBrowserVoice(settings)
 
-        devLog('browser speak params', { lang: 'en', rate, pitch, volume, voice: voice?.name })
+        devLog('browser speak params', {
+          lang: 'en',
+          rate,
+          pitch,
+          volume,
+          persona: settings.voicePersona,
+          voice: voice?.name,
+        })
 
         await new Promise<void>((resolve, reject) => {
           const utterance = new SpeechSynthesisUtterance(normalized)
@@ -530,7 +615,10 @@ class TextToSpeechService {
   async testVoice(settings: AppSettings): Promise<void> {
     if (!settings.soundEnabled || settings.voiceVolume <= 0) return
     // Allow the Settings "Test voice" button even if the main toggle was just flipped on.
-    await this.speak(TEST_VOICE_PHRASE, { ...settings, voiceExplanationsEnabled: true })
+    await this.speak(getTestVoicePhrase(settings.voicePersona), {
+      ...settings,
+      voiceExplanationsEnabled: true,
+    })
   }
 }
 

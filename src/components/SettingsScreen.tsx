@@ -8,8 +8,15 @@ import {
   startDirectNativeTtsTest,
 } from '../services/directNativeTtsTest'
 import { getVoices, textToSpeechService, type VoiceOption } from '../services/textToSpeech'
-import { TEST_VOICE_PHRASE } from '../utils/speechText'
+import { getTestVoicePhrase } from '../utils/speechText'
 import { normalizeVoicePitch, resolveSpeechVolume } from '../utils/voiceProsody'
+import {
+  VOICE_PERSONA_DEFAULTS,
+  VOICE_PERSONA_DESCRIPTIONS,
+  VOICE_PERSONA_LABELS,
+  VOICE_PERSONA_OPTIONS,
+  normalizeVoicePersona,
+} from '../utils/voicePersona'
 import { Header } from './UI'
 
 interface SettingsScreenProps {
@@ -35,6 +42,7 @@ export function SettingsScreen({
   const [testing, setTesting] = useState(false)
   const [directTesting, setDirectTesting] = useState(false)
   const [voiceUnavailable, setVoiceUnavailable] = useState(false)
+  const [resolvedVoice, setResolvedVoice] = useState<VoiceOption | null>(null)
 
   const isNativePlatform = Capacitor.getPlatform() === 'android' || Capacitor.getPlatform() === 'ios'
 
@@ -44,15 +52,23 @@ export function SettingsScreen({
 
   useEffect(() => {
     void textToSpeechService.initializeCatalog(settings)
-  }, [settings.voiceId, settings.voiceSpeed, settings.voicePitch, settings.voiceVolume])
+  }, [
+    settings.voicePersona,
+    settings.voiceId,
+    settings.voiceSpeed,
+    settings.voicePitch,
+    settings.voiceVolume,
+  ])
 
   useEffect(() => {
     return textToSpeechService.subscribe((state) => {
       setVoiceUnavailable(state.voiceUnavailable)
+      setResolvedVoice(state.selectedVoice)
     })
   }, [])
 
   const selectedVoice =
+    resolvedVoice ??
     voices.find((voice) => voice.id === settings.voiceId) ??
     (settings.voiceId == null
       ? { id: '', name: 'System default (English)', lang: 'en-US' }
@@ -63,6 +79,18 @@ export function SettingsScreen({
     onUpdate('voiceId', voiceId)
   }
 
+  const handlePersonaChange = (personaValue: string) => {
+    const persona = normalizeVoicePersona(personaValue)
+    const defaults = VOICE_PERSONA_DEFAULTS[persona]
+    void textToSpeechService.stop()
+    // Apply recommended rate/pitch for the persona; leave Voice on System default
+    // so the character can prefer an energetic/calm engine voice when available.
+    onUpdate('voicePersona', persona)
+    onUpdate('voiceSpeed', defaults.voiceSpeed)
+    onUpdate('voicePitch', defaults.voicePitch)
+    onUpdate('voiceId', null)
+  }
+
   const handleTestVoice = async () => {
     setTesting(true)
     try {
@@ -71,6 +99,9 @@ export function SettingsScreen({
       setTesting(false)
     }
   }
+
+  const activePersona = normalizeVoicePersona(settings.voicePersona)
+  const testPhrase = getTestVoicePhrase(activePersona)
 
   const resolvedVolume = resolveSpeechVolume(settings.voiceVolume)
 
@@ -150,10 +181,11 @@ export function SettingsScreen({
       </section>
 
       <section className="panel">
-        <h3>Night Guardian voice</h3>
-        <p className="setting-description">
-          Optional spoken questions and explanations with a deep, calm mentor-style voice. Written
-          explanations always stay visible.
+        <h3>Voice explanations</h3>
+        <p className="setting-description">{VOICE_PERSONA_DESCRIPTIONS[activePersona]}</p>
+        <p className="setting-meta">
+          Characters use your device&apos;s English text-to-speech engine. They are fictional QuizNova
+          guides — not based on any real person.
         </p>
 
         {voiceUnavailable && (
@@ -197,6 +229,21 @@ export function SettingsScreen({
           />
         </label>
         <label className="setting-row setting-select">
+          <span>Character</span>
+          <select
+            value={activePersona}
+            onChange={(e) => handlePersonaChange(e.target.value)}
+            disabled={!settings.voiceExplanationsEnabled}
+            aria-label="Select voice character"
+          >
+            {VOICE_PERSONA_OPTIONS.map((persona) => (
+              <option key={persona} value={persona}>
+                {VOICE_PERSONA_LABELS[persona]}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="setting-row setting-select">
           <span>Voice (optional)</span>
           <select
             value={settings.voiceId ?? ''}
@@ -212,6 +259,10 @@ export function SettingsScreen({
             ))}
           </select>
         </label>
+        <p className="setting-meta">
+          Leave Voice on System default to let the character prefer a clear English engine voice when
+          one is available. Manual voice, speed, pitch, and volume always override afterward.
+        </p>
         {voices.length === 0 && (
           <p className="setting-meta">
             No individual voices listed — the app will use your device&apos;s default English speech
@@ -267,7 +318,7 @@ export function SettingsScreen({
         >
           {testing ? 'Testing voice…' : 'Test voice'}
         </button>
-        <p className="setting-meta setting-test-phrase">{TEST_VOICE_PHRASE}</p>
+        <p className="setting-meta setting-test-phrase">{testPhrase}</p>
 
         {/* Developer-only QA controls — hidden from production Settings. */}
         {import.meta.env.DEV && isNativePlatform && (

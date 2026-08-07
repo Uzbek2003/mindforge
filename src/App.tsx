@@ -63,7 +63,7 @@ function App() {
 
   useEffect(() => {
     preloadVoices(settings).catch(() => undefined)
-  }, [settings.voiceId])
+  }, [settings.voiceId, settings.voicePersona])
 
   useEffect(() => {
     textToSpeechService.setVoiceIdClearHandler(() => updateSetting('voiceId', null))

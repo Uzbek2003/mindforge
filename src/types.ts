@@ -7,6 +7,8 @@ export type TextSize = 'normal' | 'large'
 export type VoiceSpeed = 'slow' | 'normal' | 'fast'
 /** low / normal / high — legacy stored "deep" is normalized to "low". */
 export type VoicePitch = 'low' | 'normal' | 'high'
+/** Optional spoken guide persona. All personas use the same system TTS stack. */
+export type VoicePersona = 'system' | 'night-guardian' | 'president'
 
 export interface Puzzle {
   id: number
@@ -33,6 +35,8 @@ export interface AppSettings {
   reduceAnimations: boolean
   voiceExplanationsEnabled: boolean
   voiceAutoPlay: boolean
+  /** Fictional spoken guide: system / Night Guardian / The President. */
+  voicePersona: VoicePersona
   voiceId: string | null
   voiceSpeed: VoiceSpeed
   voicePitch: VoicePitch
@@ -121,6 +125,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   reduceAnimations: false,
   voiceExplanationsEnabled: false,
   voiceAutoPlay: false,
+  voicePersona: 'night-guardian',
   voiceId: null,
   voiceSpeed: 'normal',
   voicePitch: 'normal',

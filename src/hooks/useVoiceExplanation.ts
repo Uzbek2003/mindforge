@@ -3,7 +3,7 @@ import type { AppSettings } from '../types'
 import { textToSpeechService, type TtsState } from '../services/textToSpeech'
 
 /**
- * Stable voice controls for Night Guardian TTS.
+ * Stable voice controls for the shared QuizNova TTS stack (persona presets included).
  * Callbacks are referentially stable so gameplay effects do not restart speech
  * every time speaking state changes.
  */
@@ -22,7 +22,13 @@ export function useVoiceExplanation(settings: AppSettings) {
 
   useEffect(() => {
     void textToSpeechService.stop()
-  }, [settings.voiceId, settings.voiceSpeed, settings.voicePitch, settings.voiceVolume])
+  }, [
+    settings.voicePersona,
+    settings.voiceId,
+    settings.voiceSpeed,
+    settings.voicePitch,
+    settings.voiceVolume,
+  ])
 
   const play = useCallback((text: string) => {
     const current = settingsRef.current
