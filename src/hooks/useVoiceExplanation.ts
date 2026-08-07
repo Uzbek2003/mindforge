@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { AppSettings } from '../types'
 import { textToSpeechService, type TtsState } from '../services/textToSpeech'
+import type { ProsodySource } from '../utils/voiceProsody'
 
 /**
  * Stable voice controls for Night Guardian TTS.
@@ -24,10 +25,10 @@ export function useVoiceExplanation(settings: AppSettings) {
     void textToSpeechService.stop()
   }, [settings.voiceId, settings.voiceSpeed, settings.voicePitch, settings.voiceVolume])
 
-  const play = useCallback((text: string) => {
+  const play = useCallback((text: string, source: ProsodySource = 'unknown') => {
     const current = settingsRef.current
     if (!current.voiceExplanationsEnabled || !current.soundEnabled) return
-    void textToSpeechService.speak(text, current)
+    void textToSpeechService.speak(text, current, source)
   }, [])
 
   const pause = useCallback(() => {
@@ -38,10 +39,10 @@ export function useVoiceExplanation(settings: AppSettings) {
     void textToSpeechService.resume(settingsRef.current)
   }, [])
 
-  const replay = useCallback((text: string) => {
+  const replay = useCallback((text: string, source: ProsodySource = 'unknown') => {
     const current = settingsRef.current
     if (!current.voiceExplanationsEnabled || !current.soundEnabled) return
-    void textToSpeechService.replay(text, current)
+    void textToSpeechService.replay(text, current, source)
   }, [])
 
   const stop = useCallback(() => {

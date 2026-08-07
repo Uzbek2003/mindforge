@@ -3,7 +3,7 @@ import { Capacitor } from '@capacitor/core'
 import { APP_VERSION, SUPPORT_EMAIL } from '../constants'
 import type { AppSettings } from '../types'
 import {
-  DIRECT_TTS_TEST_OPTIONS,
+  buildDirectNativeSpeakOptions,
   isDirectNativeTestRunning,
   requestDirectNativeTtsStop,
   startDirectNativeTtsTest,
@@ -11,6 +11,12 @@ import {
 } from '../services/directNativeTtsTest'
 import { getVoices, textToSpeechService, type VoiceOption } from '../services/textToSpeech'
 import { TEST_VOICE_PHRASE } from '../utils/speechText'
+import {
+  normalizeVoicePitch,
+  resolveSpeechPitch,
+  resolveSpeechRate,
+  resolveSpeechVolume,
+} from '../utils/voiceProsody'
 import { Header } from './UI'
 
 interface SettingsScreenProps {
@@ -74,6 +80,11 @@ export function SettingsScreen({
     }
   }
 
+  const resolvedRate = resolveSpeechRate(settings.voiceSpeed)
+  const resolvedPitch = resolveSpeechPitch(settings.voicePitch)
+  const resolvedVolume = resolveSpeechVolume(settings.voiceVolume)
+  const nativeTestPreview = buildDirectNativeSpeakOptions(settings)
+
   const handleDirectTtsTest = () => {
     if (directTesting || isDirectNativeTestRunning()) return
 
@@ -83,7 +94,7 @@ export function SettingsScreen({
     const started = startDirectNativeTtsTest((result) => {
       setDirectTestResult(result)
       setDirectTesting(false)
-    })
+    }, settings)
 
     if (!started) {
       setDirectTesting(false)
@@ -239,13 +250,14 @@ export function SettingsScreen({
         <label className="setting-row setting-select">
           <span>Pitch</span>
           <select
-            value={settings.voicePitch}
+            value={normalizeVoicePitch(settings.voicePitch)}
             onChange={(e) => onUpdate('voicePitch', e.target.value as AppSettings['voicePitch'])}
             disabled={!settings.voiceExplanationsEnabled}
             aria-label="Voice pitch"
           >
-            <option value="deep">Deep</option>
+            <option value="low">Low</option>
             <option value="normal">Normal</option>
+            <option value="high">High</option>
           </select>
         </label>
         <label className="setting-row setting-range">
@@ -255,13 +267,19 @@ export function SettingsScreen({
             min={0}
             max={1}
             step={0.05}
-            value={settings.voiceVolume}
-            onChange={(e) => onUpdate('voiceVolume', Number(e.target.value))}
+            value={resolvedVolume}
+            onChange={(e) => onUpdate('voiceVolume', resolveSpeechVolume(Number(e.target.value)))}
             disabled={!settings.voiceExplanationsEnabled || !settings.soundEnabled}
             aria-label="Voice volume"
           />
-          <span className="range-value">{Math.round(settings.voiceVolume * 100)}%</span>
+          <span className="range-value">{Math.round(resolvedVolume * 100)}%</span>
         </label>
+        <p className="setting-meta" role="status" data-tts-diag="prosody">
+          TTS diag: speed <strong>{settings.voiceSpeed}</strong> → rate <strong>{resolvedRate}</strong> ·
+          pitch <strong>{normalizeVoicePitch(settings.voicePitch)}</strong> →{' '}
+          <strong>{resolvedPitch}</strong> · volume <strong>{Math.round(resolvedVolume * 100)}%</strong> →{' '}
+          <strong>{resolvedVolume}</strong>
+        </p>
         <button
           type="button"
           className="btn btn-ghost setting-btn"
@@ -298,14 +316,21 @@ export function SettingsScreen({
             >
               Stop native test
             </button>
-            <p className="setting-meta">Phrase: {DIRECT_TTS_TEST_OPTIONS.text}</p>
-            <p className="setting-meta">Options: {JSON.stringify(DIRECT_TTS_TEST_OPTIONS)}</p>
-            {import.meta.env.DEV && directTestResult && (
+            <p className="setting-meta">Phrase: {nativeTestPreview.text}</p>
+            <p className="setting-meta">
+              Speak options (from Settings): {JSON.stringify(nativeTestPreview)}
+            </p>
+            {directTestResult && (
               <div className="tts-debug-panel" role="log" aria-label="Native TTS debug output">
                 <strong>Debug panel</strong>
                 <p>Platform: {directTestResult.platform}</p>
                 <p>isNativePlatform: {String(directTestResult.isNativePlatform)}</p>
                 <p>Path: {directTestResult.path}</p>
+                <p>
+                  UI → numeric: speed {directTestResult.uiSpeed} → rate {directTestResult.numericRate},
+                  pitch {directTestResult.uiPitch} → {directTestResult.numericPitch}, volume{' '}
+                  {directTestResult.uiVolume} → {directTestResult.numericVolume}
+                </p>
                 <p>Success: {String(directTestResult.success)}</p>
                 <p>Timed out: {String(directTestResult.timedOut)}</p>
                 {directTestResult.error && (

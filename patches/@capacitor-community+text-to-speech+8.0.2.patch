@@ -1,0 +1,17 @@
+diff --git a/node_modules/@capacitor-community/text-to-speech/android/src/main/java/com/getcapacitor/community/tts/TextToSpeech.java b/node_modules/@capacitor-community/text-to-speech/android/src/main/java/com/getcapacitor/community/tts/TextToSpeech.java
+index 3ad7683..32cb129 100644
+--- a/node_modules/@capacitor-community/text-to-speech/android/src/main/java/com/getcapacitor/community/tts/TextToSpeech.java
++++ b/node_modules/@capacitor-community/text-to-speech/android/src/main/java/com/getcapacitor/community/tts/TextToSpeech.java
+@@ -106,8 +106,10 @@ public class TextToSpeech implements android.speech.tts.TextToSpeech.OnInitListe
+         Locale locale = Locale.forLanguageTag(lang);
+ 
+         Bundle ttsParams = new Bundle();
+-        ttsParams.putSerializable(android.speech.tts.TextToSpeech.Engine.KEY_PARAM_UTTERANCE_ID, callbackId);
+-        ttsParams.putSerializable(android.speech.tts.TextToSpeech.Engine.KEY_PARAM_VOLUME, volume);
++        // Utterance id must be a String; volume must be a float (0..1).
++        // putSerializable(volume) caused Android engines to ignore volume and stay at 1.0.
++        ttsParams.putString(android.speech.tts.TextToSpeech.Engine.KEY_PARAM_UTTERANCE_ID, callbackId);
++        ttsParams.putFloat(android.speech.tts.TextToSpeech.Engine.KEY_PARAM_VOLUME, volume);
+ 
+         tts.setLanguage(locale);
+         tts.setSpeechRate(rate);
