@@ -1,6 +1,6 @@
 import type { SessionResult } from '../types'
-import { CATEGORY_LABELS, DIFFICULTY_LABELS, SESSION_MODE_CONFIG } from '../types'
-import { formatDuration } from '../utils/session'
+import { CATEGORY_LABELS, SESSION_MODE_CONFIG } from '../types'
+import { formatDuration, formatSessionDifficultyLabel } from '../utils/session'
 import { hasMistakesToReview } from '../utils/reviewMistakes'
 import { Header } from './UI'
 
@@ -32,7 +32,7 @@ export function ResultsScreen({
         <h2>Session complete</h2>
         <p className="results-subtitle">
           {result.category === 'all' ? 'Mixed topics' : CATEGORY_LABELS[result.category]} ·{' '}
-          {DIFFICULTY_LABELS[result.difficulty]} · {modeLabel}
+          {formatSessionDifficultyLabel(result.mode, result.difficulty)} · {modeLabel}
         </p>
 
         <div className="results-grid">
