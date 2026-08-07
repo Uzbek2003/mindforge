@@ -185,11 +185,11 @@ export const csPuzzles: Puzzle[] = [
   p(
     94,
     'hard',
-    'Which protocol encrypts web traffic between browser and server?',
-    ['HTTP', 'FTP', 'HTTPS', 'SMTP'],
+    'Which protocol provides the encryption layer commonly used underneath HTTPS?',
+    ['FTP', 'SMTP', 'TLS', 'IMAP'],
     2,
-    'The “S” stands for Secure.',
-    'HTTPS is HTTP over TLS/SSL, encrypting data in transit. Plain HTTP is unencrypted; FTP transfers files; SMTP sends email.',
+    'Modern HTTPS is essentially HTTP over this security protocol.',
+    'HTTPS is HTTP running over TLS (historically SSL). TLS encrypts and authenticates the connection; FTP, SMTP, and IMAP are application protocols, not the HTTPS encryption layer.',
   ),
   p(
     95,
@@ -203,11 +203,11 @@ export const csPuzzles: Puzzle[] = [
   p(
     96,
     'hard',
-    'For large n, which Big-O class grows more slowly: O(n) or O(n²)?',
-    ['O(n²)', 'O(n)', 'They grow at the same rate', 'It depends only on the CPU brand'],
-    1,
-    'Slower growth means better asymptotic scalability.',
-    'O(n) grows linearly while O(n²) grows quadratically, so for large n an O(n) algorithm uses fewer operations asymptotically.',
+    'What is the worst-case time complexity of the classic quicksort algorithm?',
+    ['O(n)', 'O(n log n)', 'O(n²)', 'O(2ⁿ)'],
+    2,
+    'Think about already-sorted input with a poor pivot choice.',
+    'Quicksort averages O(n log n), but in the worst case (for example, already-sorted data with naive pivots) it degrades to O(n²). Merge sort keeps O(n log n) worst-case.',
   ),
   p(
     97,
@@ -239,10 +239,15 @@ export const csPuzzles: Puzzle[] = [
   p(
     100,
     'hard',
-    'According to the CAP theorem, a distributed system can guarantee at most how many of Consistency, Availability, and Partition tolerance?',
-    ['1', '2', '3', '0'],
-    1,
-    'Network partitions force a trade-off.',
-    'CAP says that during a network partition you cannot fully provide both consistency and availability at once, so at most two of the three properties can be guaranteed.',
+    'During a network partition, the CAP theorem says a distributed data system must trade off between which two properties?',
+    [
+      'Consistency and availability',
+      'Latency and throughput only',
+      'Durability and backup frequency',
+      'Encryption and compression',
+    ],
+    0,
+    'A partition means some nodes cannot communicate; something has to give.',
+    'Under partition, a system cannot remain both fully consistent and fully available to all clients. It must choose between serving possibly stale/divergent answers (favor availability) or refusing some requests until consistency can be preserved. Partition tolerance is the condition that forces that C vs A trade-off.',
   ),
 ]

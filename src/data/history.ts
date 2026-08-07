@@ -230,11 +230,11 @@ export const historyPuzzles: Puzzle[] = [
   p(
     74,
     'hard',
-    'Which ancient Greek city-state was especially known for its rigorous military training?',
-    ['Athens', 'Sparta', 'Corinth', 'Thebes'],
-    1,
-    'Boys entered the agoge training system.',
-    'Sparta organized society around military discipline and the agoge. Athens was better known for democracy, philosophy, and naval power.',
+    'What was the name of Sparta’s state-run upbringing and military training system for male citizens?',
+    ['Agoge', 'Lyceum', 'Forum', 'Phalanx only'],
+    0,
+    'Boys entered it around age seven and trained for years.',
+    'The agoge was Sparta’s compulsory education and military training system. The Lyceum was Aristotle’s school in Athens; a phalanx is a battle formation, not the training institution.',
   ),
   p(
     75,
