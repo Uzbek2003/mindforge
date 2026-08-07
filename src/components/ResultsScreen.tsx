@@ -1,6 +1,7 @@
 import type { SessionResult } from '../types'
 import { CATEGORY_LABELS, DIFFICULTY_LABELS, SESSION_MODE_CONFIG } from '../types'
 import { formatDuration } from '../utils/session'
+import { hasMistakesToReview } from '../utils/reviewMistakes'
 import { Header } from './UI'
 
 interface ResultsScreenProps {
@@ -8,6 +9,7 @@ interface ResultsScreenProps {
   onHome: () => void
   onPlayAgain: () => void
   onRetryWrong: () => void
+  onReviewMistakes: () => void
   onShare: () => void
 }
 
@@ -16,9 +18,11 @@ export function ResultsScreen({
   onHome,
   onPlayAgain,
   onRetryWrong,
+  onReviewMistakes,
   onShare,
 }: ResultsScreenProps) {
   const modeLabel = SESSION_MODE_CONFIG[result.mode].label
+  const showReview = hasMistakesToReview(result)
 
   return (
     <div className="screen results-screen">
@@ -53,12 +57,27 @@ export function ResultsScreen({
             <span className="result-label">Time taken</span>
           </div>
         </div>
+
+        {!showReview && (
+          <p className="results-perfect" role="status">
+            Perfect session — no mistakes to review!
+          </p>
+        )}
       </section>
 
       <div className="action-row">
         <button type="button" className="btn btn-primary btn-large" onClick={onPlayAgain}>
           Play again
         </button>
+        {showReview && (
+          <button
+            type="button"
+            className="btn btn-primary review-mistakes-btn"
+            onClick={onReviewMistakes}
+          >
+            Review Mistakes ({result.incorrect})
+          </button>
+        )}
         {result.wrongPuzzleIds.length > 0 && (
           <button type="button" className="btn btn-ghost" onClick={onRetryWrong}>
             Retry incorrect ({result.wrongPuzzleIds.length})

@@ -9,9 +9,11 @@ import { useSettings } from './hooks/useSettings'
 import { HomeScreen } from './components/HomeScreen'
 import { PuzzleGame } from './components/PuzzleGame'
 import { ResultsScreen } from './components/ResultsScreen'
+import { ReviewMistakesScreen } from './components/ReviewMistakesScreen'
 import { SettingsScreen } from './components/SettingsScreen'
 import { LegalPage } from './components/LegalPage'
 import { legalPathToScreen, screenToLegalPath } from './utils/routes'
+import { buildReviewMistakeItems } from './utils/reviewMistakes'
 import { preloadVoices, textToSpeechService } from './services/textToSpeech'
 import { isDirectNativeTestRunning } from './services/directNativeTtsTest'
 import './App.css'
@@ -20,6 +22,7 @@ type Screen =
   | 'home'
   | 'play'
   | 'results'
+  | 'review-mistakes'
   | 'settings'
   | 'privacy'
   | 'terms'
@@ -121,6 +124,9 @@ function App() {
             setResumeSession(null)
             setScreen('home')
           }
+        } else if (screen === 'review-mistakes') {
+          void textToSpeechService.stop()
+          setScreen('results')
         } else {
           void textToSpeechService.stop()
           setScreen('home')
@@ -177,6 +183,12 @@ function App() {
     })
   }
 
+  const handleReviewMistakes = () => {
+    if (!sessionResult) return
+    void textToSpeechService.stop()
+    setScreen('review-mistakes')
+  }
+
   const handleShare = async () => {
     if (!sessionResult) return
     const text = `${APP_NAME}: ${sessionResult.correct}/${sessionResult.total} correct (${sessionResult.accuracy}% accuracy) in ${sessionResult.mode} mode!`
@@ -225,6 +237,16 @@ function App() {
     )
   }
 
+  if (screen === 'review-mistakes' && sessionResult) {
+    return (
+      <ReviewMistakesScreen
+        items={buildReviewMistakeItems(sessionResult)}
+        onBack={() => setScreen('results')}
+        onHome={goHome}
+      />
+    )
+  }
+
   if (screen === 'results' && sessionResult) {
     return (
       <ResultsScreen
@@ -232,6 +254,7 @@ function App() {
         onHome={goHome}
         onPlayAgain={handlePlayAgain}
         onRetryWrong={handleRetryWrong}
+        onReviewMistakes={handleReviewMistakes}
         onShare={handleShare}
       />
     )

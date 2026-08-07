@@ -119,6 +119,7 @@ export function PuzzleGame({
         bestStreakInSession: calcSessionStreak(answers.map((a) => a.correct)),
         timeMs: Date.now() - startedAt.current,
         wrongPuzzleIds: answers.filter((a) => !a.correct).map((a) => a.puzzleId),
+        sessionAnswers: answers,
         category,
         difficulty,
         mode,
