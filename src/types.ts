@@ -5,7 +5,8 @@ export type SessionMode = 'quick' | 'standard' | 'challenge' | 'full' | 'endless
 
 export type TextSize = 'normal' | 'large'
 export type VoiceSpeed = 'slow' | 'normal' | 'fast'
-export type VoicePitch = 'deep' | 'normal'
+/** low / normal / high — legacy stored "deep" is normalized to "low". */
+export type VoicePitch = 'low' | 'normal' | 'high'
 
 export interface Puzzle {
   id: number
@@ -122,7 +123,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   voiceAutoPlay: false,
   voiceId: null,
   voiceSpeed: 'normal',
-  voicePitch: 'deep',
+  voicePitch: 'normal',
   voiceVolume: 1,
   stopSpeechOnLeave: true,
 }

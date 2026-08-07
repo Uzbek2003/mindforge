@@ -1,32 +1,43 @@
 import { Capacitor } from '@capacitor/core'
 import { TextToSpeech, type TTSOptions } from '@capacitor-community/text-to-speech'
+import type { AppSettings } from '../types'
+import { resolveSpeechPitch, resolveSpeechRate, resolveSpeechVolume } from '../utils/voiceProsody'
 
-/** Plugin v8.0.2 uses lang / rate / pitch / volume. */
-export const DIRECT_TTS_TEST_OPTIONS: TTSOptions = {
+/** Base phrase for the manual native plugin test. Rate/pitch/volume come from Settings. */
+export const DIRECT_TTS_TEST_BASE = {
   text: 'Hello. This is the QuizNova native voice test.',
   lang: 'en',
-  rate: 1.0,
-  pitch: 1.0,
   volume: 1.0,
-}
+} as const
 
 const TEST_TIMEOUT_MS = 10_000
 
 export interface DirectTtsTestResult {
-  platform: string
-  isNativePlatform: boolean
-  path: 'android-native' | 'ios-native' | 'browser' | 'unsupported'
-  speakOptions: TTSOptions
   success: boolean
   error: string | null
   timedOut: boolean
-  log: string[]
 }
 
 let directTestRunning = false
 
 export function isDirectNativeTestRunning() {
   return directTestRunning
+}
+
+export function buildDirectNativeSpeakOptions(
+  settings: Pick<AppSettings, 'voiceSpeed' | 'voicePitch' | 'voiceVolume'>,
+): TTSOptions {
+  const options: TTSOptions = {
+    text: DIRECT_TTS_TEST_BASE.text,
+    lang: DIRECT_TTS_TEST_BASE.lang,
+    rate: resolveSpeechRate(settings.voiceSpeed),
+    pitch: resolveSpeechPitch(settings.voicePitch),
+    volume: resolveSpeechVolume(settings.voiceVolume),
+  }
+  if (Capacitor.getPlatform() === 'ios') {
+    options.category = 'ambient'
+  }
+  return options
 }
 
 function formatError(error: unknown): string {
@@ -49,43 +60,22 @@ function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promi
   ])
 }
 
-async function executeDirectNativeTtsTest(): Promise<DirectTtsTestResult> {
-  const log: string[] = []
+async function executeDirectNativeTtsTest(
+  settings: Pick<AppSettings, 'voiceSpeed' | 'voicePitch' | 'voiceVolume'>,
+): Promise<DirectTtsTestResult> {
   const platform = Capacitor.getPlatform()
-  const isNativePlatform = Capacitor.isNativePlatform()
-
-  log.push(`Capacitor.getPlatform() = ${platform}`)
-  log.push(`Capacitor.isNativePlatform() = ${isNativePlatform}`)
-
-  const speakOptions: TTSOptions = { ...DIRECT_TTS_TEST_OPTIONS }
-  if (platform === 'ios') {
-    speakOptions.category = 'ambient'
-  }
-
-  let path: DirectTtsTestResult['path'] = 'unsupported'
-  if (platform === 'android') path = 'android-native'
-  else if (platform === 'ios') path = 'ios-native'
-  else path = 'browser'
-
   const result: DirectTtsTestResult = {
-    platform,
-    isNativePlatform,
-    path,
-    speakOptions,
     success: false,
     error: null,
     timedOut: false,
-    log,
   }
 
   if (platform !== 'android' && platform !== 'ios') {
     result.error = 'Native TTS test requires Capacitor.getPlatform() === "android" or "ios".'
-    log.push(result.error)
     return result
   }
 
-  log.push(`Calling TextToSpeech.speak(${JSON.stringify(speakOptions)})`)
-  devConsole('Native TTS starting', { platform, speakOptions })
+  const speakOptions = buildDirectNativeSpeakOptions(settings)
 
   try {
     await withTimeout(
@@ -93,13 +83,10 @@ async function executeDirectNativeTtsTest(): Promise<DirectTtsTestResult> {
       TEST_TIMEOUT_MS,
       `Native TTS timed out after ${TEST_TIMEOUT_MS / 1000} seconds`,
     )
-    log.push('Native TTS completed')
-    devConsole('Native TTS completed')
     result.success = true
   } catch (error) {
     const message = formatError(error)
     console.error('Native TTS failed', error)
-    log.push(`Native TTS failed: ${message}`)
     result.error = message
     result.timedOut = message.includes('timed out')
   }
@@ -109,25 +96,24 @@ async function executeDirectNativeTtsTest(): Promise<DirectTtsTestResult> {
 
 /**
  * Starts a native TTS test without blocking the caller.
+ * Uses the current Settings speed/pitch/volume.
  * Returns false if a test is already running.
  */
-export function startDirectNativeTtsTest(onComplete: (result: DirectTtsTestResult) => void): boolean {
+export function startDirectNativeTtsTest(
+  onComplete: (result: DirectTtsTestResult) => void,
+  settings: Pick<AppSettings, 'voiceSpeed' | 'voicePitch' | 'voiceVolume'>,
+): boolean {
   if (directTestRunning) return false
 
   directTestRunning = true
 
-  void executeDirectNativeTtsTest()
+  void executeDirectNativeTtsTest(settings)
     .then(onComplete)
     .catch((error) => {
       onComplete({
-        platform: Capacitor.getPlatform(),
-        isNativePlatform: Capacitor.isNativePlatform(),
-        path: 'unsupported',
-        speakOptions: { ...DIRECT_TTS_TEST_OPTIONS },
         success: false,
         error: formatError(error),
         timedOut: false,
-        log: [`Unhandled test error: ${formatError(error)}`],
       })
     })
     .finally(() => {
@@ -143,10 +129,4 @@ export function requestDirectNativeTtsStop(): void {
   void TextToSpeech.stop().catch((error) => {
     console.error('Native TTS stop failed', error)
   })
-}
-
-function devConsole(message: string, detail?: unknown) {
-  if (import.meta.env.DEV) {
-    console.log('[QuizNova Direct TTS]', message, detail ?? '')
-  }
 }

@@ -1,8 +1,13 @@
 import { Capacitor } from '@capacitor/core'
 import { TextToSpeech, QueueStrategy, type TTSOptions } from '@capacitor-community/text-to-speech'
-import type { AppSettings, VoicePitch, VoiceSpeed } from '../types'
+import type { AppSettings } from '../types'
 import { normalizeSpeechText, TEST_VOICE_PHRASE } from '../utils/speechText'
 import { isDirectNativeTestRunning } from './directNativeTtsTest'
+import {
+  resolveSpeechPitch,
+  resolveSpeechRate,
+  resolveSpeechVolume,
+} from '../utils/voiceProsody'
 
 export interface VoiceOption {
   id: string
@@ -22,17 +27,6 @@ export interface TtsState {
 }
 
 type StateListener = (state: TtsState) => void
-
-const SPEED_RATE: Record<VoiceSpeed, number> = {
-  slow: 0.85,
-  normal: 1.0,
-  fast: 1.15,
-}
-
-const PITCH_VALUE: Record<VoicePitch, number> = {
-  deep: 0.8,
-  normal: 0.9,
-}
 
 const ENGLISH_LANG_PRIORITY = ['en', 'en-us', 'en-gb', 'en-ca', 'en-au']
 const NATIVE_LOCALES = ['en', 'en-US'] as const
@@ -74,12 +68,12 @@ export function isAndroidNative() {
   return Capacitor.getPlatform() === 'android'
 }
 
-export function useNativeTtsPath() {
+export function isNativeTtsPath() {
   return Capacitor.getPlatform() === 'android' || Capacitor.getPlatform() === 'ios'
 }
 
 export function browserPauseSupported() {
-  return !useNativeTtsPath() && typeof window !== 'undefined' && 'speechSynthesis' in window
+  return !isNativeTtsPath() && typeof window !== 'undefined' && 'speechSynthesis' in window
 }
 
 function formatError(error: unknown): string {
@@ -159,11 +153,15 @@ class TextToSpeechService {
   }
 
   private resolveRate(settings: AppSettings) {
-    return SPEED_RATE[settings.voiceSpeed]
+    return resolveSpeechRate(settings.voiceSpeed)
   }
 
   private resolvePitch(settings: AppSettings) {
-    return PITCH_VALUE[settings.voicePitch]
+    return resolveSpeechPitch(settings.voicePitch)
+  }
+
+  private resolveVolume(settings: AppSettings) {
+    return resolveSpeechVolume(settings.voiceVolume)
   }
 
   private resolveExplicitNativeVoiceIndex(settings: AppSettings): number | undefined {
@@ -180,7 +178,7 @@ class TextToSpeechService {
 
   private clearInvalidStoredVoice(settings: AppSettings) {
     if (settings.voiceId == null || settings.voiceId === '') return
-    if (!useNativeTtsPath()) return
+    if (!isNativeTtsPath()) return
     if (this.nativeVoices.length === 0) return
 
     if (this.resolveExplicitNativeVoiceIndex(settings) === undefined) {
@@ -204,7 +202,7 @@ class TextToSpeechService {
   }
 
   private updateSelectedVoice(settings: AppSettings) {
-    if (useNativeTtsPath()) {
+    if (isNativeTtsPath()) {
       const index = this.resolveExplicitNativeVoiceIndex(settings)
       if (index == null) {
         this.selectedVoice = DEFAULT_SYSTEM_VOICE
@@ -236,7 +234,7 @@ class TextToSpeechService {
   }
 
   async initializeCatalog(settings: AppSettings) {
-    if (useNativeTtsPath()) {
+    if (isNativeTtsPath()) {
       try {
         const [langs, voices] = await Promise.all([
           TextToSpeech.getSupportedLanguages(),
@@ -261,7 +259,7 @@ class TextToSpeechService {
   }
 
   async getVoices(): Promise<VoiceOption[]> {
-    if (useNativeTtsPath()) {
+    if (isNativeTtsPath()) {
       try {
         const result = await TextToSpeech.getSupportedVoices()
         this.nativeVoices = result.voices
@@ -302,7 +300,7 @@ class TextToSpeechService {
       lang,
       rate: this.resolveRate(settings),
       pitch: this.resolvePitch(settings),
-      volume: settings.voiceVolume,
+      volume: this.resolveVolume(settings),
       queueStrategy: QueueStrategy.Flush,
     }
 
@@ -359,7 +357,7 @@ class TextToSpeechService {
   private async hardStop(): Promise<void> {
     if (isDirectNativeTestRunning()) return
 
-    if (useNativeTtsPath()) {
+    if (isNativeTtsPath()) {
       try {
         await TextToSpeech.stop()
       } catch (error) {
@@ -412,12 +410,12 @@ class TextToSpeechService {
     this.setState({ isSpeaking: true, isPaused: false, status: 'speaking' })
 
     try {
-      if (useNativeTtsPath()) {
+      if (isNativeTtsPath()) {
         await this.nativeSpeak(normalized, settings, token)
       } else if (typeof window !== 'undefined' && window.speechSynthesis) {
         const rate = this.resolveRate(settings)
         const pitch = this.resolvePitch(settings)
-        const volume = settings.voiceVolume
+        const volume = this.resolveVolume(settings)
         const voice = this.pickBrowserVoice(settings)
 
         devLog('browser speak params', { lang: 'en', rate, pitch, volume, voice: voice?.name })
@@ -438,11 +436,29 @@ class TextToSpeechService {
             resolve()
           }
           utterance.onerror = (event) => {
-            devLog('browser speak error', event)
-            if (token === this.sessionToken) {
+            const errorType = typeof event.error === 'string' ? event.error : ''
+            // Normal when stop()/cancel() interrupts the current utterance.
+            if (errorType === 'interrupted' || errorType === 'canceled') {
+              devLog('browser speak interrupted', errorType)
+              resolve()
+              return
+            }
+            // Auto-play without a fresh user gesture often fails on web; keep voice usable.
+            if (errorType === 'not-allowed') {
+              devLog('browser speak not-allowed (needs user gesture)', { sessionToken: token })
+              resolve()
+              return
+            }
+            devLog('browser speak error', errorType || formatError(event))
+            if (
+              token === this.sessionToken &&
+              (errorType === 'synthesis-unavailable' ||
+                errorType === 'language-unavailable' ||
+                errorType === 'voice-unavailable')
+            ) {
               this.setState({ voiceUnavailable: true })
             }
-            reject(event)
+            reject(new Error(errorType || 'browser-speech-error'))
           }
 
           window.speechSynthesis.speak(utterance)
@@ -451,8 +467,20 @@ class TextToSpeechService {
         this.setState({ voiceUnavailable: true })
       }
     } catch (error) {
-      devLog('speak failed', formatError(error))
-      if (token === this.sessionToken) {
+      const message = formatError(error)
+      devLog('speak failed', message)
+      // Avoid sticky unavailable state for transient web/autoplay failures.
+      if (
+        token === this.sessionToken &&
+        !isNativeTtsPath() &&
+        /not-allowed|interrupted|canceled/i.test(message)
+      ) {
+        /* keep voiceAvailable for transient web autoplay blocks */
+      } else if (
+        token === this.sessionToken &&
+        isNativeTtsPath() &&
+        !/interrupted|canceled/i.test(message)
+      ) {
         this.setState({ voiceUnavailable: true })
       }
     } finally {
@@ -501,7 +529,8 @@ class TextToSpeechService {
 
   async testVoice(settings: AppSettings): Promise<void> {
     if (!settings.soundEnabled || settings.voiceVolume <= 0) return
-    await this.speak(TEST_VOICE_PHRASE, settings)
+    // Allow the Settings "Test voice" button even if the main toggle was just flipped on.
+    await this.speak(TEST_VOICE_PHRASE, { ...settings, voiceExplanationsEnabled: true })
   }
 }
 
