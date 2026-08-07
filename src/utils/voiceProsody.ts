@@ -20,15 +20,6 @@ export const PITCH_VALUE: Record<'low' | 'normal' | 'high', number> = {
   high: 1.5,
 }
 
-export type ProsodySource =
-  | 'test-voice'
-  | 'native-tts-test'
-  | 'quiz-question'
-  | 'quiz-explanation'
-  | 'browser-speak'
-  | 'native-speak'
-  | 'unknown'
-
 export function normalizeVoicePitch(pitch: string | null | undefined): VoicePitch {
   if (pitch === 'high') return 'high'
   if (pitch === 'normal') return 'normal'
@@ -52,29 +43,4 @@ export function resolveSpeechVolume(volume: number): number {
   if (volume >= 1) return 1
   // Keep a plain number (avoid odd long-double stringification across the bridge).
   return Math.round(volume * 100) / 100
-}
-
-/** Temporary always-on diagnostics for physical Android QA (logcat / remote console). */
-export function logProsodyDiagnostics(
-  source: ProsodySource,
-  ui: { voiceSpeed: VoiceSpeed; voicePitch: VoicePitch | string; voiceVolume?: number },
-  numeric: { rate: number; pitch: number; volume: number },
-  extra?: Record<string, unknown>,
-) {
-  const uiVolume =
-    ui.voiceVolume === undefined ? numeric.volume : resolveSpeechVolume(ui.voiceVolume)
-  const payload = {
-    source,
-    uiSpeed: ui.voiceSpeed,
-    uiPitch: normalizeVoicePitch(ui.voicePitch),
-    uiVolume,
-    numericRate: numeric.rate,
-    numericPitch: numeric.pitch,
-    numericVolume: numeric.volume,
-    ...extra,
-  }
-  console.log(
-    `[QuizNova TTS DIAG] source=${source} uiSpeed=${payload.uiSpeed} → rate=${payload.numericRate} | uiPitch=${payload.uiPitch} → pitch=${payload.numericPitch} | uiVolume=${payload.uiVolume} → volume=${payload.numericVolume}`,
-    payload,
-  )
 }

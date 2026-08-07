@@ -4,12 +4,9 @@ import type { AppSettings } from '../types'
 import { normalizeSpeechText, TEST_VOICE_PHRASE } from '../utils/speechText'
 import { isDirectNativeTestRunning } from './directNativeTtsTest'
 import {
-  logProsodyDiagnostics,
-  normalizeVoicePitch,
   resolveSpeechPitch,
   resolveSpeechRate,
   resolveSpeechVolume,
-  type ProsodySource,
 } from '../utils/voiceProsody'
 
 export interface VoiceOption {
@@ -296,18 +293,14 @@ class TextToSpeechService {
     text: string,
     lang: string,
     settings: AppSettings,
-    explicitVoice: number | undefined,
-    source: ProsodySource,
+    explicitVoice?: number,
   ): TTSOptions {
-    const rate = this.resolveRate(settings)
-    const pitch = this.resolvePitch(settings)
-    const volume = this.resolveVolume(settings)
     const options: TTSOptions = {
       text,
       lang,
-      rate,
-      pitch,
-      volume,
+      rate: this.resolveRate(settings),
+      pitch: this.resolvePitch(settings),
+      volume: this.resolveVolume(settings),
       queueStrategy: QueueStrategy.Flush,
     }
 
@@ -319,32 +312,10 @@ class TextToSpeechService {
       options.category = 'ambient'
     }
 
-    logProsodyDiagnostics(
-      source,
-      {
-        voiceSpeed: settings.voiceSpeed,
-        voicePitch: settings.voicePitch,
-        voiceVolume: settings.voiceVolume,
-      },
-      { rate, pitch, volume },
-      {
-        platform: Capacitor.getPlatform(),
-        lang,
-        voiceIndex: explicitVoice ?? null,
-        queueStrategy: QueueStrategy.Flush,
-        textPreview: text.slice(0, 80),
-      },
-    )
-
     return options
   }
 
-  private async nativeSpeak(
-    text: string,
-    settings: AppSettings,
-    token: number,
-    source: ProsodySource,
-  ): Promise<void> {
+  private async nativeSpeak(text: string, settings: AppSettings, token: number): Promise<void> {
     const explicitVoice = this.resolveExplicitNativeVoiceIndex(settings)
 
     if (settings.voiceId != null && settings.voiceId !== '' && explicitVoice === undefined && this.nativeVoices.length > 0) {
@@ -358,7 +329,7 @@ class TextToSpeechService {
     let lastError: unknown = null
 
     for (const lang of NATIVE_LOCALES) {
-      const speakParams = this.buildNativeSpeakOptions(text, lang, settings, explicitVoice, source)
+      const speakParams = this.buildNativeSpeakOptions(text, lang, settings, explicitVoice)
       devLog('speak params', speakParams)
 
       try {
@@ -424,11 +395,7 @@ class TextToSpeechService {
     return token
   }
 
-  async speak(
-    text: string,
-    settings: AppSettings,
-    source: ProsodySource = 'unknown',
-  ): Promise<void> {
+  async speak(text: string, settings: AppSettings): Promise<void> {
     if (!text.trim() || !this.canSpeak(settings)) {
       devLog('speak skipped', { empty: !text.trim(), canSpeak: this.canSpeak(settings) })
       return
@@ -444,28 +411,13 @@ class TextToSpeechService {
 
     try {
       if (isNativeTtsPath()) {
-        await this.nativeSpeak(normalized, settings, token, source)
+        await this.nativeSpeak(normalized, settings, token)
       } else if (typeof window !== 'undefined' && window.speechSynthesis) {
         const rate = this.resolveRate(settings)
         const pitch = this.resolvePitch(settings)
         const volume = this.resolveVolume(settings)
         const voice = this.pickBrowserVoice(settings)
 
-        logProsodyDiagnostics(
-          source === 'unknown' ? 'browser-speak' : source,
-          {
-            voiceSpeed: settings.voiceSpeed,
-            voicePitch: settings.voicePitch,
-            voiceVolume: settings.voiceVolume,
-          },
-          { rate, pitch, volume },
-          {
-            platform: 'web',
-            voiceName: voice?.name ?? null,
-            uiPitchNormalized: normalizeVoicePitch(settings.voicePitch),
-            textPreview: normalized.slice(0, 80),
-          },
-        )
         devLog('browser speak params', { lang: 'en', rate, pitch, volume, voice: voice?.name })
 
         await new Promise<void>((resolve, reject) => {
@@ -538,16 +490,12 @@ class TextToSpeechService {
     }
   }
 
-  async replay(
-    text: string,
-    settings: AppSettings,
-    source: ProsodySource = 'unknown',
-  ): Promise<void> {
+  async replay(text: string, settings: AppSettings): Promise<void> {
     devLog('replay requested')
     await this.stop()
     await delay(SESSION_SETTLE_MS)
     if (!this.canSpeak(settings)) return
-    await this.speak(text, settings, source)
+    await this.speak(text, settings)
   }
 
   async pause(): Promise<void> {
@@ -582,11 +530,7 @@ class TextToSpeechService {
   async testVoice(settings: AppSettings): Promise<void> {
     if (!settings.soundEnabled || settings.voiceVolume <= 0) return
     // Allow the Settings "Test voice" button even if the main toggle was just flipped on.
-    await this.speak(
-      TEST_VOICE_PHRASE,
-      { ...settings, voiceExplanationsEnabled: true },
-      'test-voice',
-    )
+    await this.speak(TEST_VOICE_PHRASE, { ...settings, voiceExplanationsEnabled: true })
   }
 }
 

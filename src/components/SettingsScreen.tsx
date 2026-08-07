@@ -3,20 +3,13 @@ import { Capacitor } from '@capacitor/core'
 import { APP_VERSION, SUPPORT_EMAIL } from '../constants'
 import type { AppSettings } from '../types'
 import {
-  buildDirectNativeSpeakOptions,
   isDirectNativeTestRunning,
   requestDirectNativeTtsStop,
   startDirectNativeTtsTest,
-  type DirectTtsTestResult,
 } from '../services/directNativeTtsTest'
 import { getVoices, textToSpeechService, type VoiceOption } from '../services/textToSpeech'
 import { TEST_VOICE_PHRASE } from '../utils/speechText'
-import {
-  normalizeVoicePitch,
-  resolveSpeechPitch,
-  resolveSpeechRate,
-  resolveSpeechVolume,
-} from '../utils/voiceProsody'
+import { normalizeVoicePitch, resolveSpeechVolume } from '../utils/voiceProsody'
 import { Header } from './UI'
 
 interface SettingsScreenProps {
@@ -41,7 +34,6 @@ export function SettingsScreen({
   const [voices, setVoices] = useState<VoiceOption[]>([])
   const [testing, setTesting] = useState(false)
   const [directTesting, setDirectTesting] = useState(false)
-  const [directTestResult, setDirectTestResult] = useState<DirectTtsTestResult | null>(null)
   const [voiceUnavailable, setVoiceUnavailable] = useState(false)
 
   const isNativePlatform = Capacitor.getPlatform() === 'android' || Capacitor.getPlatform() === 'ios'
@@ -80,19 +72,14 @@ export function SettingsScreen({
     }
   }
 
-  const resolvedRate = resolveSpeechRate(settings.voiceSpeed)
-  const resolvedPitch = resolveSpeechPitch(settings.voicePitch)
   const resolvedVolume = resolveSpeechVolume(settings.voiceVolume)
-  const nativeTestPreview = buildDirectNativeSpeakOptions(settings)
 
   const handleDirectTtsTest = () => {
     if (directTesting || isDirectNativeTestRunning()) return
 
     setDirectTesting(true)
-    setDirectTestResult(null)
 
-    const started = startDirectNativeTtsTest((result) => {
-      setDirectTestResult(result)
+    const started = startDirectNativeTtsTest(() => {
       setDirectTesting(false)
     }, settings)
 
@@ -103,9 +90,6 @@ export function SettingsScreen({
 
   const handleDirectTtsStop = () => {
     requestDirectNativeTtsStop()
-    setDirectTestResult((prev) =>
-      prev ? { ...prev, log: [...prev.log, 'Native TTS stop requested manually'] } : prev,
-    )
     setDirectTesting(false)
   }
 
@@ -274,12 +258,6 @@ export function SettingsScreen({
           />
           <span className="range-value">{Math.round(resolvedVolume * 100)}%</span>
         </label>
-        <p className="setting-meta" role="status" data-tts-diag="prosody">
-          TTS diag: speed <strong>{settings.voiceSpeed}</strong> → rate <strong>{resolvedRate}</strong> ·
-          pitch <strong>{normalizeVoicePitch(settings.voicePitch)}</strong> →{' '}
-          <strong>{resolvedPitch}</strong> · volume <strong>{Math.round(resolvedVolume * 100)}%</strong> →{' '}
-          <strong>{resolvedVolume}</strong>
-        </p>
         <button
           type="button"
           className="btn btn-ghost setting-btn"
@@ -295,8 +273,8 @@ export function SettingsScreen({
           <>
             <h4 className="setting-subheading">Native TTS Test</h4>
             <p className="setting-description">
-              Manual test only. Calls <code>TextToSpeech.speak()</code> once with no automatic
-              retries or discovery.
+              Manual test only. Speaks a short phrase using your current speed, pitch, and volume
+              settings.
             </p>
             <button
               type="button"
@@ -316,29 +294,6 @@ export function SettingsScreen({
             >
               Stop native test
             </button>
-            <p className="setting-meta">Phrase: {nativeTestPreview.text}</p>
-            <p className="setting-meta">
-              Speak options (from Settings): {JSON.stringify(nativeTestPreview)}
-            </p>
-            {directTestResult && (
-              <div className="tts-debug-panel" role="log" aria-label="Native TTS debug output">
-                <strong>Debug panel</strong>
-                <p>Platform: {directTestResult.platform}</p>
-                <p>isNativePlatform: {String(directTestResult.isNativePlatform)}</p>
-                <p>Path: {directTestResult.path}</p>
-                <p>
-                  UI → numeric: speed {directTestResult.uiSpeed} → rate {directTestResult.numericRate},
-                  pitch {directTestResult.uiPitch} → {directTestResult.numericPitch}, volume{' '}
-                  {directTestResult.uiVolume} → {directTestResult.numericVolume}
-                </p>
-                <p>Success: {String(directTestResult.success)}</p>
-                <p>Timed out: {String(directTestResult.timedOut)}</p>
-                {directTestResult.error && (
-                  <pre className="tts-debug-error">{directTestResult.error}</pre>
-                )}
-                <pre className="tts-debug-log">{directTestResult.log.join('\n')}</pre>
-              </div>
-            )}
           </>
         )}
       </section>

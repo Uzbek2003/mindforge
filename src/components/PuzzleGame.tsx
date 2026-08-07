@@ -252,7 +252,7 @@ export function PuzzleGame({
   useEffect(() => {
     if (!puzzle || revealed || !questionSpeech) return
     if (!settings.voiceAutoPlay || !settings.voiceExplanationsEnabled || !settings.soundEnabled) return
-    playVoice(questionSpeech, 'quiz-question')
+    playVoice(questionSpeech)
   }, [
     puzzle?.id,
     questionSpeech,
@@ -267,7 +267,7 @@ export function PuzzleGame({
   useEffect(() => {
     if (!revealed || !displayPuzzle || !explanationSpeech) return
     if (!settings.voiceAutoPlay || !settings.voiceExplanationsEnabled || !settings.soundEnabled) return
-    playVoice(explanationSpeech, 'quiz-explanation')
+    playVoice(explanationSpeech)
   }, [
     displayPuzzle?.id,
     explanationSpeech,
@@ -417,14 +417,10 @@ export function PuzzleGame({
               isPaused={voice.isPaused}
               status={voice.status}
               voiceUnavailable={voice.voiceUnavailable}
-              onPlay={() =>
-                voice.play(panelSpeech, revealed ? 'quiz-explanation' : 'quiz-question')
-              }
+              onPlay={() => voice.play(panelSpeech)}
               onPause={voice.pause}
               onResume={voice.resume}
-              onReplay={() =>
-                voice.replay(panelSpeech, revealed ? 'quiz-explanation' : 'quiz-question')
-              }
+              onReplay={() => voice.replay(panelSpeech)}
               onStop={voice.stop}
             />
 
