@@ -269,7 +269,8 @@ export function SettingsScreen({
         </button>
         <p className="setting-meta setting-test-phrase">{TEST_VOICE_PHRASE}</p>
 
-        {isNativePlatform && (
+        {/* Developer-only QA controls — hidden from production Settings. */}
+        {import.meta.env.DEV && isNativePlatform && (
           <>
             <h4 className="setting-subheading">Native TTS Test</h4>
             <p className="setting-description">
