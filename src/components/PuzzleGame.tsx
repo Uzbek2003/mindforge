@@ -6,6 +6,9 @@ import { buildSessionQueue, buildEndlessExtension, calcSessionStreak } from '../
 import { hapticError, hapticSuccess } from '../utils/haptics'
 import { playCorrectSound, playWrongSound } from '../utils/sounds'
 import { buildQuestionReportEmail } from '../utils/report'
+import { buildExplanationSpeech, buildQuestionSpeech } from '../utils/explanationSpeech'
+import { useVoiceExplanation } from '../hooks/useVoiceExplanation'
+import { VoiceExplanationPanel } from './VoiceExplanationPanel'
 import { Header } from './UI'
 
 interface PuzzleGameProps {
@@ -65,12 +68,29 @@ export function PuzzleGame({
   const [timeLeft, setTimeLeft] = useState(timeLimit)
   const startedAt = useRef(resumeSession?.startedAt ?? Date.now())
   const answeringRef = useRef(false)
+  const voice = useVoiceExplanation(settings)
+  const { play: playVoice, stop: stopVoice } = voice
+  const stopSpeechOnLeave = settings.stopSpeechOnLeave
 
   const puzzle = puzzleQueue[index]
   const displayPuzzle = revealed && answeredPuzzle ? answeredPuzzle : puzzle
   const sessionTotal = puzzleQueue.length
   const sessionNum = index + 1
   const isEndless = mode === 'endless'
+
+  // Always stop speech when the game screen unmounts.
+  useEffect(() => {
+    return () => {
+      stopVoice()
+    }
+  }, [stopVoice])
+
+  // Stop speech when moving to another question (configurable).
+  useEffect(() => {
+    return () => {
+      if (stopSpeechOnLeave) stopVoice()
+    }
+  }, [index, stopSpeechOnLeave, stopVoice])
 
   useEffect(() => {
     if (!puzzle || puzzleQueue.length === 0) return
@@ -87,6 +107,7 @@ export function PuzzleGame({
 
   const finishSession = useCallback(
     (answers: SessionAnswer[]) => {
+      stopVoice()
       const correct = answers.filter((a) => a.correct).length
       const incorrect = answers.length - correct
       onSessionUpdate(null)
@@ -103,7 +124,7 @@ export function PuzzleGame({
         mode,
       })
     },
-    [category, difficulty, mode, onFinish, onSessionUpdate],
+    [category, difficulty, mode, onFinish, onSessionUpdate, stopVoice],
   )
 
   const revealAnswer = useCallback(
@@ -172,6 +193,7 @@ export function PuzzleGame({
   }, [handleTimeout, puzzle?.id, revealed, timeLimit])
 
   const handleNext = useCallback(() => {
+    if (stopSpeechOnLeave) stopVoice()
     answeringRef.current = false
     setReported(false)
     setTimedOut(false)
@@ -206,9 +228,55 @@ export function PuzzleGame({
     }
 
     finishSession(sessionAnswers)
-  }, [completedIds, finishSession, index, isEndless, puzzleQueue, sessionAnswers, timeLimit])
+  }, [
+    completedIds,
+    finishSession,
+    index,
+    isEndless,
+    puzzleQueue,
+    sessionAnswers,
+    stopSpeechOnLeave,
+    stopVoice,
+    timeLimit,
+  ])
 
   const isCorrect = selected === displayPuzzle?.correctIndex
+  const questionSpeech = displayPuzzle && !revealed ? buildQuestionSpeech(displayPuzzle) : ''
+  const explanationSpeech =
+    revealed && displayPuzzle
+      ? buildExplanationSpeech(displayPuzzle, selected, Boolean(isCorrect), timedOut)
+      : ''
+  const panelSpeech = explanationSpeech || questionSpeech
+
+  // Auto-read the question when it appears.
+  useEffect(() => {
+    if (!puzzle || revealed || !questionSpeech) return
+    if (!settings.voiceAutoPlay || !settings.voiceExplanationsEnabled || !settings.soundEnabled) return
+    playVoice(questionSpeech)
+  }, [
+    puzzle?.id,
+    questionSpeech,
+    revealed,
+    settings.soundEnabled,
+    settings.voiceAutoPlay,
+    settings.voiceExplanationsEnabled,
+    playVoice,
+  ])
+
+  // Auto-read the explanation after an answer is revealed (replaces any question speech).
+  useEffect(() => {
+    if (!revealed || !displayPuzzle || !explanationSpeech) return
+    if (!settings.voiceAutoPlay || !settings.voiceExplanationsEnabled || !settings.soundEnabled) return
+    playVoice(explanationSpeech)
+  }, [
+    displayPuzzle?.id,
+    explanationSpeech,
+    revealed,
+    settings.soundEnabled,
+    settings.voiceAutoPlay,
+    settings.voiceExplanationsEnabled,
+    playVoice,
+  ])
 
   const handleReport = () => {
     if (!displayPuzzle || reported) return
@@ -218,8 +286,9 @@ export function PuzzleGame({
   }
 
   const handleExit = useCallback(() => {
+    stopVoice()
     onExit()
-  }, [onExit])
+  }, [onExit, stopVoice])
 
   if (!puzzle || puzzleQueue.length === 0) {
     return (
@@ -341,6 +410,19 @@ export function PuzzleGame({
                 {isCorrect ? 'Correct!' : timedOut ? "Time's up!" : 'Not quite'}
               </strong>
             </div>
+
+            <VoiceExplanationPanel
+              settings={settings}
+              isSpeaking={voice.isSpeaking}
+              isPaused={voice.isPaused}
+              status={voice.status}
+              voiceUnavailable={voice.voiceUnavailable}
+              onPlay={() => voice.play(panelSpeech)}
+              onPause={voice.pause}
+              onResume={voice.resume}
+              onReplay={() => voice.replay(panelSpeech)}
+              onStop={voice.stop}
+            />
 
             {!isCorrect && timedOut && (
               <p className="feedback-answer">

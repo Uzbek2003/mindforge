@@ -1,6 +1,11 @@
 import type { Puzzle } from '../types'
 import { normalizeSpeechText } from './speechText'
 
+/** Spoken script for the puzzle question itself. */
+export function buildQuestionSpeech(puzzle: Puzzle): string {
+  return normalizeSpeechText(`Question. ${puzzle.question}`)
+}
+
 export function buildExplanationSpeech(
   puzzle: Puzzle,
   selectedIndex: number | null,
