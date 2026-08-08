@@ -44,6 +44,15 @@ const ALLOWLIST = new Set([
 
 const SOURCE_EXTENSIONS = /\.(ts|tsx|js|jsx|mjs|cjs|css|html|md|json|xml|txt|webmanifest|svg)$/i
 
+/** Normalize repo-relative paths so Windows `\` and POSIX `/` share one allowlist. */
+export function normalizeRepoPath(repoPath: string): string {
+  return repoPath.replace(/\\/g, '/')
+}
+
+export function isBrandingAllowlisted(repoPath: string): boolean {
+  return ALLOWLIST.has(normalizeRepoPath(repoPath))
+}
+
 function walkSourceFiles(dir: string, out: string[] = []): string[] {
   for (const entry of readdirSync(dir)) {
     if (
@@ -62,7 +71,7 @@ function walkSourceFiles(dir: string, out: string[] = []): string[] {
       continue
     }
     if (SOURCE_EXTENSIONS.test(entry)) {
-      out.push(relative(ROOT, full))
+      out.push(normalizeRepoPath(relative(ROOT, full)))
     }
   }
   return out
@@ -130,17 +139,39 @@ describe('MindForge branding and package consistency', () => {
     expect(buildQuestionReportEmail(SAMPLE_PUZZLE, 0)).not.toContain(FORBIDDEN_USER_FACING_BRAND)
   })
 
+  it('normalizes Windows and POSIX paths before allowlist matching', () => {
+    expect(normalizeRepoPath('src\\utils\\storageMigration.ts')).toBe(
+      'src/utils/storageMigration.ts',
+    )
+    expect(normalizeRepoPath('src/utils/storageMigration.ts')).toBe(
+      'src/utils/storageMigration.ts',
+    )
+    expect(normalizeRepoPath('src\\utils/progressExport.ts')).toBe(
+      'src/utils/progressExport.ts',
+    )
+
+    expect(isBrandingAllowlisted('src\\utils\\storageMigration.ts')).toBe(true)
+    expect(isBrandingAllowlisted('src/utils/storageMigration.ts')).toBe(true)
+    expect(isBrandingAllowlisted('src\\constants.ts')).toBe(true)
+    expect(isBrandingAllowlisted('src/constants.ts')).toBe(true)
+    expect(isBrandingAllowlisted('src\\main.tsx')).toBe(true)
+    expect(isBrandingAllowlisted('src\\components\\HomeScreen.tsx')).toBe(false)
+    expect(isBrandingAllowlisted('public\\about.html')).toBe(false)
+    expect(isBrandingAllowlisted('android\\app\\build.gradle')).toBe(false)
+  })
+
   it('has no unintended QuizNova user-facing text in source files', () => {
     const offenders = walkSourceFiles(ROOT).flatMap((file) => {
-      if (ALLOWLIST.has(file)) return []
-      const content = readFileSync(join(ROOT, file), 'utf8')
+      const normalized = normalizeRepoPath(file)
+      if (isBrandingAllowlisted(normalized)) return []
+      const content = readFileSync(join(ROOT, ...normalized.split('/')), 'utf8')
       if (!content.includes(FORBIDDEN_USER_FACING_BRAND)) return []
 
       return content
         .split('\n')
         .map((line, index) => ({ line, index }))
         .filter(({ line }) => line.includes(FORBIDDEN_USER_FACING_BRAND))
-        .map(({ line, index }) => `${file}:${index + 1}: ${line.trim()}`)
+        .map(({ line, index }) => `${normalized}:${index + 1}: ${line.trim()}`)
     })
 
     expect(offenders, 'QuizNova still present outside allowlisted migration/test files').toEqual([])
