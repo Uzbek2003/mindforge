@@ -53,7 +53,7 @@ function App() {
     totalPuzzles,
   } = useProgress()
 
-  const { settings, updateSetting } = useSettings()
+  const { settings, updateSetting, updateSettings } = useSettings()
 
   const [screen, setScreen] = useState<Screen>('home')
   const [playConfig, setPlayConfig] = useState<PlayConfig | null>(null)
@@ -63,7 +63,7 @@ function App() {
 
   useEffect(() => {
     preloadVoices(settings).catch(() => undefined)
-  }, [settings.voiceId])
+  }, [settings.voiceId, settings.voicePersona])
 
   useEffect(() => {
     textToSpeechService.setVoiceIdClearHandler(() => updateSetting('voiceId', null))
@@ -242,6 +242,7 @@ function App() {
       <SettingsScreen
         settings={settings}
         onUpdate={updateSetting}
+        onUpdateMany={updateSettings}
         onResetProgress={resetProgress}
         onExportProgress={exportProgress}
         onImportProgress={importProgress}
