@@ -1,5 +1,6 @@
 import type { CSSProperties } from 'react'
 import type { WorldDefinition, MixedAdventureDefinition } from '../config/worlds'
+import { roundedPercentOf } from '../utils/progress'
 
 type WorldCardData = WorldDefinition | MixedAdventureDefinition
 
@@ -12,7 +13,7 @@ interface WorldCardProps {
 }
 
 export function WorldCard({ world, completed, total, selected, onSelect }: WorldCardProps) {
-  const pct = total > 0 ? Math.round((completed / total) * 100) : 0
+  const pct = roundedPercentOf(completed, total)
 
   const style = {
     '--world-accent': world.theme.accent,

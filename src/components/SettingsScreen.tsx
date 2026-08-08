@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react'
-import { Capacitor } from '@capacitor/core'
 import { APP_VERSION, SUPPORT_EMAIL } from '../constants'
 import type { AppSettings } from '../types'
 import {
@@ -10,7 +9,10 @@ import {
 import { getVoices, textToSpeechService, type VoiceOption } from '../services/textToSpeech'
 import { TEST_VOICE_PHRASE } from '../utils/speechText'
 import { normalizeVoicePitch, resolveSpeechVolume } from '../utils/voiceProsody'
-import { Header } from './UI'
+import { formatLangTag } from '../utils/lang'
+import { LEGAL_SCREENS, LEGAL_SCREEN_TITLES, type LegalScreen } from '../utils/routes'
+import { isNativeTtsPath } from '../utils/platform'
+import { Header, SelectRow, ToggleRow } from './UI'
 
 interface SettingsScreenProps {
   settings: AppSettings
@@ -18,7 +20,7 @@ interface SettingsScreenProps {
   onResetProgress: () => void
   onExportProgress: () => void
   onImportProgress: () => Promise<'success' | 'cancelled' | 'error'>
-  onOpenLegal: (page: 'privacy' | 'terms' | 'about' | 'contact') => void
+  onOpenLegal: (page: LegalScreen) => void
   onBack: () => void
 }
 
@@ -36,7 +38,7 @@ export function SettingsScreen({
   const [directTesting, setDirectTesting] = useState(false)
   const [voiceUnavailable, setVoiceUnavailable] = useState(false)
 
-  const isNativePlatform = Capacitor.getPlatform() === 'android' || Capacitor.getPlatform() === 'ios'
+  const isNativePlatform = isNativeTtsPath()
 
   useEffect(() => {
     void getVoices().then(setVoices)
@@ -115,38 +117,26 @@ export function SettingsScreen({
 
       <section className="panel">
         <h3>Gameplay</h3>
-        <label className="setting-row">
-          <span>Sound effects</span>
-          <input
-            type="checkbox"
-            checked={settings.soundEnabled}
-            onChange={(e) => onUpdate('soundEnabled', e.target.checked)}
-          />
-        </label>
-        <label className="setting-row">
-          <span>Vibration (mobile)</span>
-          <input
-            type="checkbox"
-            checked={settings.vibrationEnabled}
-            onChange={(e) => onUpdate('vibrationEnabled', e.target.checked)}
-          />
-        </label>
-        <label className="setting-row">
-          <span>Large text</span>
-          <input
-            type="checkbox"
-            checked={settings.textSize === 'large'}
-            onChange={(e) => onUpdate('textSize', e.target.checked ? 'large' : 'normal')}
-          />
-        </label>
-        <label className="setting-row">
-          <span>Reduce animations</span>
-          <input
-            type="checkbox"
-            checked={settings.reduceAnimations}
-            onChange={(e) => onUpdate('reduceAnimations', e.target.checked)}
-          />
-        </label>
+        <ToggleRow
+          label="Sound effects"
+          checked={settings.soundEnabled}
+          onChange={(checked) => onUpdate('soundEnabled', checked)}
+        />
+        <ToggleRow
+          label="Vibration (mobile)"
+          checked={settings.vibrationEnabled}
+          onChange={(checked) => onUpdate('vibrationEnabled', checked)}
+        />
+        <ToggleRow
+          label="Large text"
+          checked={settings.textSize === 'large'}
+          onChange={(checked) => onUpdate('textSize', checked ? 'large' : 'normal')}
+        />
+        <ToggleRow
+          label="Reduce animations"
+          checked={settings.reduceAnimations}
+          onChange={(checked) => onUpdate('reduceAnimations', checked)}
+        />
       </section>
 
       <section className="panel">
@@ -166,84 +156,69 @@ export function SettingsScreen({
 
         {selectedVoice && (
           <p className="setting-meta">
-            Selected voice: <strong>{selectedVoice.name}</strong> ({selectedVoice.lang.replace('_', '-')})
+            Selected voice: <strong>{selectedVoice.name}</strong> ({formatLangTag(selectedVoice.lang)})
           </p>
         )}
 
-        <label className="setting-row">
-          <span>Voice explanations</span>
-          <input
-            type="checkbox"
-            checked={settings.voiceExplanationsEnabled}
-            onChange={(e) => onUpdate('voiceExplanationsEnabled', e.target.checked)}
-          />
-        </label>
-        <label className="setting-row">
-          <span>Auto-play questions & explanations</span>
-          <input
-            type="checkbox"
-            checked={settings.voiceAutoPlay}
-            onChange={(e) => onUpdate('voiceAutoPlay', e.target.checked)}
-            disabled={!settings.voiceExplanationsEnabled}
-          />
-        </label>
-        <label className="setting-row">
-          <span>Stop speech when leaving a question</span>
-          <input
-            type="checkbox"
-            checked={settings.stopSpeechOnLeave}
-            onChange={(e) => onUpdate('stopSpeechOnLeave', e.target.checked)}
-            disabled={!settings.voiceExplanationsEnabled}
-          />
-        </label>
-        <label className="setting-row setting-select">
-          <span>Voice (optional)</span>
-          <select
-            value={settings.voiceId ?? ''}
-            onChange={(e) => handleVoiceChange(e.target.value || null)}
-            disabled={!settings.voiceExplanationsEnabled}
-            aria-label="Select voice"
-          >
-            <option value="">System default (English)</option>
-            {voices.map((voice) => (
-              <option key={voice.id} value={voice.id}>
-                {voice.name} ({voice.lang})
-              </option>
-            ))}
-          </select>
-        </label>
+        <ToggleRow
+          label="Voice explanations"
+          checked={settings.voiceExplanationsEnabled}
+          onChange={(checked) => onUpdate('voiceExplanationsEnabled', checked)}
+        />
+        <ToggleRow
+          label="Auto-play questions & explanations"
+          checked={settings.voiceAutoPlay}
+          onChange={(checked) => onUpdate('voiceAutoPlay', checked)}
+          disabled={!settings.voiceExplanationsEnabled}
+        />
+        <ToggleRow
+          label="Stop speech when leaving a question"
+          checked={settings.stopSpeechOnLeave}
+          onChange={(checked) => onUpdate('stopSpeechOnLeave', checked)}
+          disabled={!settings.voiceExplanationsEnabled}
+        />
+        <SelectRow
+          label="Voice (optional)"
+          value={settings.voiceId ?? ''}
+          onChange={(value) => handleVoiceChange(value || null)}
+          ariaLabel="Select voice"
+          disabled={!settings.voiceExplanationsEnabled}
+        >
+          <option value="">System default (English)</option>
+          {voices.map((voice) => (
+            <option key={voice.id} value={voice.id}>
+              {voice.name} ({voice.lang})
+            </option>
+          ))}
+        </SelectRow>
         {voices.length === 0 && (
           <p className="setting-meta">
             No individual voices listed — the app will use your device&apos;s default English speech
             engine.
           </p>
         )}
-        <label className="setting-row setting-select">
-          <span>Speaking speed</span>
-          <select
-            value={settings.voiceSpeed}
-            onChange={(e) => onUpdate('voiceSpeed', e.target.value as AppSettings['voiceSpeed'])}
-            disabled={!settings.voiceExplanationsEnabled}
-            aria-label="Speaking speed"
-          >
-            <option value="slow">Slow</option>
-            <option value="normal">Normal</option>
-            <option value="fast">Fast</option>
-          </select>
-        </label>
-        <label className="setting-row setting-select">
-          <span>Pitch</span>
-          <select
-            value={normalizeVoicePitch(settings.voicePitch)}
-            onChange={(e) => onUpdate('voicePitch', e.target.value as AppSettings['voicePitch'])}
-            disabled={!settings.voiceExplanationsEnabled}
-            aria-label="Voice pitch"
-          >
-            <option value="low">Low</option>
-            <option value="normal">Normal</option>
-            <option value="high">High</option>
-          </select>
-        </label>
+        <SelectRow
+          label="Speaking speed"
+          value={settings.voiceSpeed}
+          onChange={(value) => onUpdate('voiceSpeed', value as AppSettings['voiceSpeed'])}
+          ariaLabel="Speaking speed"
+          disabled={!settings.voiceExplanationsEnabled}
+        >
+          <option value="slow">Slow</option>
+          <option value="normal">Normal</option>
+          <option value="fast">Fast</option>
+        </SelectRow>
+        <SelectRow
+          label="Pitch"
+          value={normalizeVoicePitch(settings.voicePitch)}
+          onChange={(value) => onUpdate('voicePitch', value as AppSettings['voicePitch'])}
+          ariaLabel="Voice pitch"
+          disabled={!settings.voiceExplanationsEnabled}
+        >
+          <option value="low">Low</option>
+          <option value="normal">Normal</option>
+          <option value="high">High</option>
+        </SelectRow>
         <label className="setting-row setting-range">
           <span>Volume</span>
           <input
@@ -314,18 +289,16 @@ export function SettingsScreen({
 
       <section className="panel">
         <h3>Legal & support</h3>
-        <button type="button" className="btn btn-ghost setting-btn" onClick={() => onOpenLegal('privacy')}>
-          Privacy Policy
-        </button>
-        <button type="button" className="btn btn-ghost setting-btn" onClick={() => onOpenLegal('terms')}>
-          Terms of Use
-        </button>
-        <button type="button" className="btn btn-ghost setting-btn" onClick={() => onOpenLegal('about')}>
-          About the App
-        </button>
-        <button type="button" className="btn btn-ghost setting-btn" onClick={() => onOpenLegal('contact')}>
-          Contact & Support
-        </button>
+        {LEGAL_SCREENS.map((page) => (
+          <button
+            key={page}
+            type="button"
+            className="btn btn-ghost setting-btn"
+            onClick={() => onOpenLegal(page)}
+          >
+            {LEGAL_SCREEN_TITLES[page]}
+          </button>
+        ))}
         <p className="setting-meta">
           Support: <a href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a>
         </p>

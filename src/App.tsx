@@ -12,22 +12,13 @@ import { ResultsScreen } from './components/ResultsScreen'
 import { ReviewMistakesScreen } from './components/ReviewMistakesScreen'
 import { SettingsScreen } from './components/SettingsScreen'
 import { LegalPage } from './components/LegalPage'
-import { legalPathToScreen, screenToLegalPath } from './utils/routes'
+import { legalPathToScreen, screenToLegalPath, type LegalScreen } from './utils/routes'
 import { buildReviewMistakeItems } from './utils/reviewMistakes'
 import { preloadVoices, textToSpeechService } from './services/textToSpeech'
 import { isDirectNativeTestRunning } from './services/directNativeTtsTest'
 import './App.css'
 
-type Screen =
-  | 'home'
-  | 'play'
-  | 'results'
-  | 'review-mistakes'
-  | 'settings'
-  | 'privacy'
-  | 'terms'
-  | 'about'
-  | 'contact'
+type Screen = 'home' | 'play' | 'results' | 'review-mistakes' | 'settings' | LegalScreen
 
 interface PlayConfig {
   category: Category | 'all'
@@ -64,6 +55,17 @@ function App() {
   const [resumeSession, setResumeSession] = useState<LastSession | null>(null)
   const [legalFromSettings, setLegalFromSettings] = useState(false)
 
+  /** Leaves the current screen with speech stopped. */
+  const goToScreen = (next: Screen) => {
+    void textToSpeechService.stop()
+    setScreen(next)
+  }
+
+  const clearPlayState = () => {
+    setPlayConfig(null)
+    setResumeSession(null)
+  }
+
   useEffect(() => {
     preloadVoices(settings).catch(() => undefined)
   }, [settings.voiceId])
@@ -92,7 +94,7 @@ function App() {
     return () => window.removeEventListener('popstate', onPopState)
   }, [])
 
-  const openLegal = (page: 'privacy' | 'terms' | 'about' | 'contact') => {
+  const openLegal = (page: LegalScreen) => {
     setLegalFromSettings(true)
     window.history.pushState(null, '', screenToLegalPath(page))
     setScreen(page)
@@ -119,17 +121,12 @@ function App() {
       if (screen !== 'home') {
         if (screen === 'play') {
           if (window.confirm('Leave this session? Progress in this session will be saved.')) {
-            void textToSpeechService.stop()
-            setPlayConfig(null)
-            setResumeSession(null)
-            setScreen('home')
+            handleExitPlay()
           }
         } else if (screen === 'review-mistakes') {
-          void textToSpeechService.stop()
-          setScreen('results')
+          goToScreen('results')
         } else {
-          void textToSpeechService.stop()
-          setScreen('home')
+          goToScreen('home')
         }
         return
       }
@@ -149,19 +146,15 @@ function App() {
   }
 
   const handleFinish = (result: SessionResult) => {
-    void textToSpeechService.stop()
     clearLastSession()
     setSessionResult(result)
-    setPlayConfig(null)
-    setResumeSession(null)
-    setScreen('results')
+    clearPlayState()
+    goToScreen('results')
   }
 
   const handleExitPlay = () => {
-    void textToSpeechService.stop()
-    setPlayConfig(null)
-    setResumeSession(null)
-    setScreen('home')
+    clearPlayState()
+    goToScreen('home')
   }
 
   const handlePlayAgain = () => {
@@ -185,8 +178,7 @@ function App() {
 
   const handleReviewMistakes = () => {
     if (!sessionResult) return
-    void textToSpeechService.stop()
-    setScreen('review-mistakes')
+    goToScreen('review-mistakes')
   }
 
   const handleShare = async () => {
@@ -209,8 +201,7 @@ function App() {
   }
 
   const goHome = () => {
-    setPlayConfig(null)
-    setResumeSession(null)
+    clearPlayState()
     setSessionResult(null)
     window.history.pushState(null, '', '/')
     setScreen('home')

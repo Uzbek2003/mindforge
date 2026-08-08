@@ -1,18 +1,10 @@
 import { APP_NAME, APP_TAGLINE, APP_VERSION, SUPPORT_EMAIL } from '../constants'
+import { LEGAL_SCREEN_TITLES, type LegalScreen } from '../utils/routes'
 import { Header } from './UI'
 
-type LegalPageType = 'privacy' | 'terms' | 'about' | 'contact'
-
 interface LegalPageProps {
-  type: LegalPageType
+  type: LegalScreen
   onBack: () => void
-}
-
-const TITLES: Record<LegalPageType, string> = {
-  privacy: 'Privacy Policy',
-  terms: 'Terms of Use',
-  about: 'About the App',
-  contact: 'Contact & Support',
 }
 
 export function LegalPage({ type, onBack }: LegalPageProps) {
@@ -21,7 +13,7 @@ export function LegalPage({ type, onBack }: LegalPageProps) {
       <Header onHome={onBack} showHome homeLabel="Back" />
 
       <article className="legal-content panel">
-        <h2>{TITLES[type]}</h2>
+        <h2>{LEGAL_SCREEN_TITLES[type]}</h2>
         <p className="legal-updated">Last updated: August 4, 2026</p>
 
         {type === 'privacy' && (

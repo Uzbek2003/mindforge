@@ -4,6 +4,7 @@ import { ALL_PUZZLES, getPuzzles } from '../data'
 import { SESSION_MODE_CONFIG, UNLOCK_THRESHOLDS, DIFFICULTY_LABELS } from '../types'
 import { MIXED_ADVENTURE, WORLDS, getWorldByCategory } from '../config/worlds'
 import { getUnsolvedPuzzles } from '../utils/session'
+import { countCompleted } from '../utils/progress'
 import { DifficultyCard, Header, ProgressRing } from './UI'
 import { WorldCard } from './WorldCard'
 
@@ -46,18 +47,6 @@ export function HomeScreen({
   const [difficulty, setDifficulty] = useState<Difficulty>('easy')
   const [mode, setMode] = useState<SessionMode>('standard')
 
-  const countCompleted = (cat: Category | 'all', diff?: Difficulty) => {
-    const puzzles =
-      cat === 'all'
-        ? diff
-          ? getPuzzles({ difficulty: diff })
-          : ALL_PUZZLES
-        : diff
-          ? getPuzzles({ category: cat, difficulty: diff })
-          : getPuzzles({ category: cat })
-    return puzzles.filter((p) => completedIds.includes(p.id)).length
-  }
-
   const selectedWorld =
     category === 'all' ? MIXED_ADVENTURE : getWorldByCategory(category)
 
@@ -66,10 +55,7 @@ export function HomeScreen({
       ? 5
       : getUnsolvedPuzzles(category, difficulty, completedIds, mode).length
 
-  const totalInSelection =
-    category === 'all'
-      ? getPuzzles({ difficulty }).length
-      : getPuzzles({ category, difficulty }).length
+  const totalInSelection = getPuzzles({ category, difficulty }).length
 
   const canStart =
     (mode === 'daily' || isDifficultyUnlocked(difficulty)) &&
@@ -145,14 +131,14 @@ export function HomeScreen({
         <div className="world-map-grid">
           <WorldCard
             world={MIXED_ADVENTURE}
-            completed={countCompleted('all')}
+            completed={countCompleted(completedIds)}
             total={ALL_PUZZLES.length}
             selected={category === 'all'}
             onSelect={() => setCategory('all')}
           />
           {WORLDS.map((world) => {
             const total = getPuzzles({ category: world.category }).length
-            const completed = countCompleted(world.category)
+            const completed = countCompleted(completedIds, { category: world.category })
             return (
               <WorldCard
                 key={world.id}
@@ -186,11 +172,8 @@ export function HomeScreen({
           </p>
           <div className="difficulty-grid">
             {(['easy', 'medium', 'hard'] as Difficulty[]).map((d) => {
-              const total =
-                category === 'all'
-                  ? getPuzzles({ difficulty: d }).length
-                  : getPuzzles({ category, difficulty: d }).length
-              const completed = countCompleted(category, d)
+              const total = getPuzzles({ category, difficulty: d }).length
+              const completed = countCompleted(completedIds, { category, difficulty: d })
               const unlocked = isDifficultyUnlocked(d)
               let unlockHint = 'Locked'
               if (d === 'medium' && !unlocked) {

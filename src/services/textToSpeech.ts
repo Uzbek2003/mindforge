@@ -3,6 +3,11 @@ import { TextToSpeech, QueueStrategy, type TTSOptions } from '@capacitor-communi
 import type { AppSettings } from '../types'
 import { normalizeSpeechText, TEST_VOICE_PHRASE } from '../utils/speechText'
 import { isDirectNativeTestRunning } from './directNativeTtsTest'
+import { buildNativeTtsOptions } from './ttsOptions'
+import { formatError } from '../utils/errors'
+import { formatLangTag, isEnglishLang, normalizeLang } from '../utils/lang'
+import { isAndroidNative, isNativeTtsPath } from '../utils/platform'
+import { canSpeak } from '../utils/voiceSettings'
 import {
   resolveSpeechPitch,
   resolveSpeechRate,
@@ -47,14 +52,7 @@ function delay(ms: number) {
   return new Promise<void>((resolve) => window.setTimeout(resolve, ms))
 }
 
-export function normalizeLang(lang: string) {
-  return lang.trim().replace(/_/g, '-').toLowerCase()
-}
-
-export function isEnglishLang(lang: string) {
-  const norm = normalizeLang(lang)
-  return norm === 'en' || norm.startsWith('en-')
-}
+export { isEnglishLang, normalizeLang }
 
 function englishLangRank(lang: string) {
   const norm = normalizeLang(lang)
@@ -64,25 +62,10 @@ function englishLangRank(lang: string) {
   return 999
 }
 
-export function isAndroidNative() {
-  return Capacitor.getPlatform() === 'android'
-}
-
-export function isNativeTtsPath() {
-  return Capacitor.getPlatform() === 'android' || Capacitor.getPlatform() === 'ios'
-}
+export { isAndroidNative, isNativeTtsPath }
 
 export function browserPauseSupported() {
   return !isNativeTtsPath() && typeof window !== 'undefined' && 'speechSynthesis' in window
-}
-
-function formatError(error: unknown): string {
-  if (error instanceof Error) return `${error.name}: ${error.message}`
-  try {
-    return JSON.stringify(error)
-  } catch {
-    return String(error)
-  }
 }
 
 class TextToSpeechService {
@@ -148,10 +131,6 @@ class TextToSpeechService {
     this.notify()
   }
 
-  private canSpeak(settings: AppSettings) {
-    return settings.soundEnabled && settings.voiceExplanationsEnabled && settings.voiceVolume > 0
-  }
-
   private resolveRate(settings: AppSettings) {
     return resolveSpeechRate(settings.voiceSpeed)
   }
@@ -213,9 +192,9 @@ class TextToSpeechService {
       this.selectedVoice = {
         id: String(index),
         name: voice.name,
-        lang: voice.lang.replace(/_/g, '-'),
+        lang: formatLangTag(voice.lang),
       }
-      this.language = voice.lang.replace(/_/g, '-')
+      this.language = formatLangTag(voice.lang)
       return
     }
 
@@ -270,7 +249,7 @@ class TextToSpeechService {
           .map(({ voice, index }) => ({
             id: String(index),
             name: voice.name,
-            lang: voice.lang.replace(/_/g, '-'),
+            lang: formatLangTag(voice.lang),
           }))
       } catch (error) {
         devLog('getVoices error', error)
@@ -295,24 +274,13 @@ class TextToSpeechService {
     settings: AppSettings,
     explicitVoice?: number,
   ): TTSOptions {
-    const options: TTSOptions = {
+    return buildNativeTtsOptions({
       text,
       lang,
-      rate: this.resolveRate(settings),
-      pitch: this.resolvePitch(settings),
-      volume: this.resolveVolume(settings),
+      settings,
+      voice: explicitVoice,
       queueStrategy: QueueStrategy.Flush,
-    }
-
-    if (explicitVoice !== undefined) {
-      options.voice = explicitVoice
-    }
-
-    if (Capacitor.getPlatform() === 'ios') {
-      options.category = 'ambient'
-    }
-
-    return options
+    })
   }
 
   private async nativeSpeak(text: string, settings: AppSettings, token: number): Promise<void> {
@@ -396,8 +364,8 @@ class TextToSpeechService {
   }
 
   async speak(text: string, settings: AppSettings): Promise<void> {
-    if (!text.trim() || !this.canSpeak(settings)) {
-      devLog('speak skipped', { empty: !text.trim(), canSpeak: this.canSpeak(settings) })
+    if (!text.trim() || !canSpeak(settings)) {
+      devLog('speak skipped', { empty: !text.trim(), canSpeak: canSpeak(settings) })
       return
     }
 
@@ -494,7 +462,7 @@ class TextToSpeechService {
     devLog('replay requested')
     await this.stop()
     await delay(SESSION_SETTLE_MS)
-    if (!this.canSpeak(settings)) return
+    if (!canSpeak(settings)) return
     await this.speak(text, settings)
   }
 

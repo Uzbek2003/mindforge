@@ -8,6 +8,8 @@ import { playCorrectSound, playWrongSound } from '../utils/sounds'
 import { buildQuestionReportEmail } from '../utils/report'
 import { buildExplanationSpeech, buildQuestionSpeech } from '../utils/explanationSpeech'
 import { useVoiceExplanation } from '../hooks/useVoiceExplanation'
+import { roundedPercentOf } from '../utils/progress'
+import { shouldAutoPlayVoice } from '../utils/voiceSettings'
 import { VoiceExplanationPanel } from './VoiceExplanationPanel'
 import { Header } from './UI'
 
@@ -115,7 +117,7 @@ export function PuzzleGame({
         correct,
         incorrect,
         total: answers.length,
-        accuracy: answers.length ? Math.round((correct / answers.length) * 100) : 0,
+        accuracy: roundedPercentOf(correct, answers.length),
         bestStreakInSession: calcSessionStreak(answers.map((a) => a.correct)),
         timeMs: Date.now() - startedAt.current,
         wrongPuzzleIds: answers.filter((a) => !a.correct).map((a) => a.puzzleId),
@@ -193,6 +195,15 @@ export function PuzzleGame({
     return () => window.clearInterval(timer)
   }, [handleTimeout, puzzle?.id, revealed, timeLimit])
 
+  const advanceToNextQuestion = useCallback(() => {
+    setIndex((i) => i + 1)
+    setSelected(null)
+    setShowHint(false)
+    setRevealed(false)
+    setAnsweredPuzzle(null)
+    setTimeLeft(timeLimit)
+  }, [timeLimit])
+
   const handleNext = useCallback(() => {
     if (stopSpeechOnLeave) stopVoice()
     answeringRef.current = false
@@ -209,27 +220,18 @@ export function PuzzleGame({
       }
 
       setPuzzleQueue((queue) => [...queue, ...more])
-      setIndex((i) => i + 1)
-      setSelected(null)
-      setShowHint(false)
-      setRevealed(false)
-      setAnsweredPuzzle(null)
-      setTimeLeft(timeLimit)
+      advanceToNextQuestion()
       return
     }
 
     if (index < puzzleQueue.length - 1) {
-      setIndex((i) => i + 1)
-      setSelected(null)
-      setShowHint(false)
-      setRevealed(false)
-      setAnsweredPuzzle(null)
-      setTimeLeft(timeLimit)
+      advanceToNextQuestion()
       return
     }
 
     finishSession(sessionAnswers)
   }, [
+    advanceToNextQuestion,
     completedIds,
     finishSession,
     index,
@@ -238,7 +240,6 @@ export function PuzzleGame({
     sessionAnswers,
     stopSpeechOnLeave,
     stopVoice,
-    timeLimit,
   ])
 
   const isCorrect = selected === displayPuzzle?.correctIndex
@@ -248,34 +249,25 @@ export function PuzzleGame({
       ? buildExplanationSpeech(displayPuzzle, selected, Boolean(isCorrect), timedOut)
       : ''
   const panelSpeech = explanationSpeech || questionSpeech
+  const autoPlayVoice = shouldAutoPlayVoice(settings)
 
   // Auto-read the question when it appears.
   useEffect(() => {
     if (!puzzle || revealed || !questionSpeech) return
-    if (!settings.voiceAutoPlay || !settings.voiceExplanationsEnabled || !settings.soundEnabled) return
+    if (!autoPlayVoice) return
     playVoice(questionSpeech)
-  }, [
-    puzzle?.id,
-    questionSpeech,
-    revealed,
-    settings.soundEnabled,
-    settings.voiceAutoPlay,
-    settings.voiceExplanationsEnabled,
-    playVoice,
-  ])
+  }, [puzzle?.id, questionSpeech, revealed, autoPlayVoice, playVoice])
 
   // Auto-read the explanation after an answer is revealed (replaces any question speech).
   useEffect(() => {
     if (!revealed || !displayPuzzle || !explanationSpeech) return
-    if (!settings.voiceAutoPlay || !settings.voiceExplanationsEnabled || !settings.soundEnabled) return
+    if (!autoPlayVoice) return
     playVoice(explanationSpeech)
   }, [
     displayPuzzle?.id,
     explanationSpeech,
     revealed,
-    settings.soundEnabled,
-    settings.voiceAutoPlay,
-    settings.voiceExplanationsEnabled,
+    autoPlayVoice,
     playVoice,
   ])
 

@@ -1,7 +1,8 @@
-import { Capacitor } from '@capacitor/core'
 import type { AppSettings } from '../types'
 import { browserPauseSupported } from '../services/textToSpeech'
 import type { TtsStatus } from '../services/textToSpeech'
+import { isAndroidNative } from '../utils/platform'
+import { isVoiceEnabled } from '../utils/voiceSettings'
 
 interface VoiceExplanationPanelProps {
   settings: AppSettings
@@ -28,9 +29,9 @@ export function VoiceExplanationPanel({
   onReplay,
   onStop,
 }: VoiceExplanationPanelProps) {
-  const voiceDisabled = !settings.voiceExplanationsEnabled || !settings.soundEnabled
+  const voiceDisabled = !isVoiceEnabled(settings)
   const showBrowserPause = browserPauseSupported()
-  const isAndroid = Capacitor.getPlatform() === 'android'
+  const isAndroid = isAndroidNative()
 
   const statusMessage = (() => {
     if (voiceDisabled) {

@@ -1,29 +1,23 @@
 import { Capacitor } from '@capacitor/core'
 import { Haptics, ImpactStyle, NotificationType } from '@capacitor/haptics'
 
-export async function hapticImpact(enabled: boolean) {
+async function runHaptic(enabled: boolean, run: () => Promise<void>) {
   if (!enabled || !Capacitor.isNativePlatform()) return
   try {
-    await Haptics.impact({ style: ImpactStyle.Light })
+    await run()
   } catch {
     /* noop */
   }
 }
 
-export async function hapticSuccess(enabled: boolean) {
-  if (!enabled || !Capacitor.isNativePlatform()) return
-  try {
-    await Haptics.notification({ type: NotificationType.Success })
-  } catch {
-    /* noop */
-  }
+export function hapticImpact(enabled: boolean) {
+  return runHaptic(enabled, () => Haptics.impact({ style: ImpactStyle.Light }))
 }
 
-export async function hapticError(enabled: boolean) {
-  if (!enabled || !Capacitor.isNativePlatform()) return
-  try {
-    await Haptics.notification({ type: NotificationType.Error })
-  } catch {
-    /* noop */
-  }
+export function hapticSuccess(enabled: boolean) {
+  return runHaptic(enabled, () => Haptics.notification({ type: NotificationType.Success }))
+}
+
+export function hapticError(enabled: boolean) {
+  return runHaptic(enabled, () => Haptics.notification({ type: NotificationType.Error }))
 }
