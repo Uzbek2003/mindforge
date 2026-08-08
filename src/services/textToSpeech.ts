@@ -44,7 +44,7 @@ const DEFAULT_SYSTEM_VOICE: VoiceOption = {
 
 function devLog(...args: unknown[]) {
   if (import.meta.env.DEV) {
-    console.log('[QuizNova TTS]', ...args)
+    console.log('[MindForge TTS]', ...args)
   }
 }
 

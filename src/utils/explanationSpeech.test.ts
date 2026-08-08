@@ -40,6 +40,6 @@ describe('persona speech scripts', () => {
   it('adapts the Settings test phrase to the selected persona', () => {
     expect(getTestVoicePhrase('president')).toContain('The President')
     expect(getTestVoicePhrase('night-guardian')).toContain('Night Guardian')
-    expect(getTestVoicePhrase('system')).toContain('QuizNova learning guide')
+    expect(getTestVoicePhrase('system')).toContain('MindForge learning guide')
   })
 })

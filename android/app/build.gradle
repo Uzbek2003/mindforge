@@ -1,10 +1,10 @@
 apply plugin: 'com.android.application'
 
 android {
-    namespace = "com.uzbek2003.quiznova"
+    namespace = "com.shakhzodrafikov.mindforge"
     compileSdk = rootProject.ext.compileSdkVersion
     defaultConfig {
-        applicationId "com.uzbek2003.quiznova"
+        applicationId "com.shakhzodrafikov.mindforge"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1

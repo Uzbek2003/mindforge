@@ -1,4 +1,4 @@
-import { SUPPORT_EMAIL } from '../constants'
+import { APP_NAME, SUPPORT_EMAIL } from '../constants'
 import type { Puzzle } from '../types'
 
 export function buildQuestionReportEmail(
@@ -8,10 +8,10 @@ export function buildQuestionReportEmail(
   const selectedAnswer =
     selectedIndex != null ? puzzle.options[selectedIndex] : 'Not answered'
   const correctAnswer = puzzle.options[puzzle.correctIndex]
-  const subject = encodeURIComponent(`QuizNova question report #${puzzle.id}`)
+  const subject = encodeURIComponent(`${APP_NAME} question report #${puzzle.id}`)
   const body = encodeURIComponent(
     [
-      'QuizNova — Question Report',
+      `${APP_NAME} — Question Report`,
       '',
       `Puzzle ID: ${puzzle.id}`,
       `Question: ${puzzle.question}`,

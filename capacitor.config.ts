@@ -1,8 +1,8 @@
 import type { CapacitorConfig } from '@capacitor/cli'
 
 const config: CapacitorConfig = {
-  appId: 'com.uzbek2003.quiznova',
-  appName: 'QuizNova',
+  appId: 'com.shakhzodrafikov.mindforge',
+  appName: 'MindForge',
   webDir: 'dist',
   android: {
     allowMixedContent: false,

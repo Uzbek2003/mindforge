@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { STORAGE_KEYS } from '../constants'
+import { readStorageKey } from '../utils/storageMigration'
 import { NUMBER_KINGDOM, getNumberKingdomNodeIndex, isNumberKingdomComplete } from '../config/numberKingdom'
 import {
   EMPTY_ADVENTURE_PROGRESS,
@@ -11,7 +12,7 @@ import {
 
 function loadAdventureProgress(): AdventureProgress {
   try {
-    const raw = localStorage.getItem(STORAGE_KEYS.adventure)
+    const raw = readStorageKey('adventure')
     if (!raw) return { ...EMPTY_ADVENTURE_PROGRESS }
     const parsed = { ...EMPTY_ADVENTURE_PROGRESS, ...JSON.parse(raw) } as AdventureProgress
     if (parsed.version !== 1) return { ...EMPTY_ADVENTURE_PROGRESS }

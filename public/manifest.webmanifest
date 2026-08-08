@@ -1,6 +1,6 @@
 {
-  "name": "QuizNova",
-  "short_name": "QuizNova",
+  "name": "MindForge",
+  "short_name": "MindForge",
   "description": "Educational puzzle and trivia for everyone",
   "start_url": "/",
   "display": "standalone",
