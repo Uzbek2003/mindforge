@@ -2,24 +2,22 @@ import { useCallback, useEffect, useState } from 'react'
 import { DEFAULT_SETTINGS, type AppSettings } from '../types'
 import { STORAGE_KEYS } from '../constants'
 import { normalizeVoicePitch } from '../utils/voiceProsody'
+import { readStoredJson, writeStoredJson } from '../utils/storage'
 
 function loadSettings(): AppSettings {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEYS.settings)
-    if (!raw) return { ...DEFAULT_SETTINGS }
-    const parsed = { ...DEFAULT_SETTINGS, ...JSON.parse(raw) } as AppSettings
-    parsed.voicePitch = normalizeVoicePitch(parsed.voicePitch as string)
-    if (parsed.voiceSpeed !== 'slow' && parsed.voiceSpeed !== 'fast') {
-      parsed.voiceSpeed = 'normal'
-    }
-    return parsed
-  } catch {
-    return { ...DEFAULT_SETTINGS }
+  const stored = readStoredJson<Partial<AppSettings>>(STORAGE_KEYS.settings)
+  if (!stored) return { ...DEFAULT_SETTINGS }
+
+  const parsed = { ...DEFAULT_SETTINGS, ...stored }
+  parsed.voicePitch = normalizeVoicePitch(parsed.voicePitch as string)
+  if (parsed.voiceSpeed !== 'slow' && parsed.voiceSpeed !== 'fast') {
+    parsed.voiceSpeed = 'normal'
   }
+  return parsed
 }
 
 function saveSettings(settings: AppSettings) {
-  localStorage.setItem(STORAGE_KEYS.settings, JSON.stringify(settings))
+  writeStoredJson(STORAGE_KEYS.settings, settings)
 }
 
 export function useSettings() {

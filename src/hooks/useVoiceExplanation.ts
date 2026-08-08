@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { AppSettings } from '../types'
 import { textToSpeechService, type TtsState } from '../services/textToSpeech'
+import { fireAndForget } from '../utils/errors'
 
 /**
  * Stable voice controls for Night Guardian TTS.
@@ -16,36 +17,36 @@ export function useVoiceExplanation(settings: AppSettings) {
 
   useEffect(() => {
     if (!settings.voiceExplanationsEnabled || !settings.soundEnabled) {
-      void textToSpeechService.stop()
+      fireAndForget(textToSpeechService.stop(), 'stopping speech after disabling voice')
     }
   }, [settings.voiceExplanationsEnabled, settings.soundEnabled])
 
   useEffect(() => {
-    void textToSpeechService.stop()
+    fireAndForget(textToSpeechService.stop(), 'stopping speech after a voice setting change')
   }, [settings.voiceId, settings.voiceSpeed, settings.voicePitch, settings.voiceVolume])
 
   const play = useCallback((text: string) => {
     const current = settingsRef.current
     if (!current.voiceExplanationsEnabled || !current.soundEnabled) return
-    void textToSpeechService.speak(text, current)
+    fireAndForget(textToSpeechService.speak(text, current), 'speaking explanation')
   }, [])
 
   const pause = useCallback(() => {
-    void textToSpeechService.pause()
+    fireAndForget(textToSpeechService.pause(), 'pausing speech')
   }, [])
 
   const resume = useCallback(() => {
-    void textToSpeechService.resume(settingsRef.current)
+    fireAndForget(textToSpeechService.resume(settingsRef.current), 'resuming speech')
   }, [])
 
   const replay = useCallback((text: string) => {
     const current = settingsRef.current
     if (!current.voiceExplanationsEnabled || !current.soundEnabled) return
-    void textToSpeechService.replay(text, current)
+    fireAndForget(textToSpeechService.replay(text, current), 'replaying explanation')
   }, [])
 
   const stop = useCallback(() => {
-    void textToSpeechService.stop()
+    fireAndForget(textToSpeechService.stop(), 'stopping speech')
   }, [])
 
   return {

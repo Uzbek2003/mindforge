@@ -2,6 +2,7 @@ import { Capacitor } from '@capacitor/core'
 import { TextToSpeech, QueueStrategy, type TTSOptions } from '@capacitor-community/text-to-speech'
 import type { AppSettings } from '../types'
 import { normalizeSpeechText, TEST_VOICE_PHRASE } from '../utils/speechText'
+import { formatError, reportError } from '../utils/errors'
 import { isDirectNativeTestRunning } from './directNativeTtsTest'
 import {
   resolveSpeechPitch,
@@ -76,15 +77,6 @@ export function browserPauseSupported() {
   return !isNativeTtsPath() && typeof window !== 'undefined' && 'speechSynthesis' in window
 }
 
-function formatError(error: unknown): string {
-  if (error instanceof Error) return `${error.name}: ${error.message}`
-  try {
-    return JSON.stringify(error)
-  } catch {
-    return String(error)
-  }
-}
-
 class TextToSpeechService {
   private sessionToken = 0
   private isSpeaking = false
@@ -135,8 +127,14 @@ class TextToSpeechService {
   }
 
   private notify() {
+    const state = this.getState()
     for (const listener of this.listeners) {
-      listener(this.getState())
+      try {
+        listener(state)
+      } catch (error) {
+        // One broken subscriber must not stop the others from updating.
+        reportError('speech state listener failed', error)
+      }
     }
   }
 
@@ -190,7 +188,8 @@ class TextToSpeechService {
   private pickBrowserVoice(settings: AppSettings): SpeechSynthesisVoice | undefined {
     if (!settings.voiceId) return undefined
 
-    const voices = typeof window !== 'undefined' ? window.speechSynthesis.getVoices() : []
+    const voices =
+      typeof window !== 'undefined' && window.speechSynthesis ? window.speechSynthesis.getVoices() : []
     const english = voices.filter((voice) => isEnglishLang(voice.lang))
 
     return english.find(
@@ -245,7 +244,7 @@ class TextToSpeechService {
         devLog('detected languages', this.supportedLanguages)
         devLog('detected voices', this.nativeVoices)
       } catch (error) {
-        devLog('voice catalog error (continuing anyway)', error)
+        reportError('voice catalog unavailable (continuing with system default)', error)
       }
     } else if (typeof window !== 'undefined' && window.speechSynthesis) {
       window.speechSynthesis.getVoices()
@@ -273,12 +272,13 @@ class TextToSpeechService {
             lang: voice.lang.replace(/_/g, '-'),
           }))
       } catch (error) {
-        devLog('getVoices error', error)
+        reportError('could not list native voices', error)
         return []
       }
     }
 
-    const voices = typeof window !== 'undefined' ? window.speechSynthesis.getVoices() : []
+    const voices =
+      typeof window !== 'undefined' && window.speechSynthesis ? window.speechSynthesis.getVoices() : []
     return voices
       .filter((voice) => isEnglishLang(voice.lang))
       .sort((a, b) => englishLangRank(a.lang) - englishLangRank(b.lang))
@@ -341,7 +341,7 @@ class TextToSpeechService {
         return
       } catch (error) {
         lastError = error
-        devLog('native speak error', { lang, error: formatError(error) })
+        reportError(`native speech failed for language "${lang}"`, error)
         if (lang === NATIVE_LOCALES[NATIVE_LOCALES.length - 1]) {
           if (token === this.sessionToken) {
             this.setState({ voiceUnavailable: true })
@@ -361,7 +361,7 @@ class TextToSpeechService {
       try {
         await TextToSpeech.stop()
       } catch (error) {
-        devLog('native stop error', error)
+        reportError('native speech stop failed', error)
       }
     }
 
@@ -379,7 +379,7 @@ class TextToSpeechService {
     try {
       await this.hardStop()
     } catch (error) {
-      devLog('stop threw', error)
+      reportError('speech stop failed', error)
     }
 
     this.currentText = ''
@@ -449,7 +449,7 @@ class TextToSpeechService {
               resolve()
               return
             }
-            devLog('browser speak error', errorType || formatError(event))
+            reportError('browser speech error', errorType || formatError(event))
             if (
               token === this.sessionToken &&
               (errorType === 'synthesis-unavailable' ||
@@ -468,7 +468,7 @@ class TextToSpeechService {
       }
     } catch (error) {
       const message = formatError(error)
-      devLog('speak failed', message)
+      reportError('speech playback failed', error)
       // Avoid sticky unavailable state for transient web/autoplay failures.
       if (
         token === this.sessionToken &&

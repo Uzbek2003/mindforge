@@ -16,6 +16,7 @@ import { legalPathToScreen, screenToLegalPath } from './utils/routes'
 import { buildReviewMistakeItems } from './utils/reviewMistakes'
 import { preloadVoices, textToSpeechService } from './services/textToSpeech'
 import { isDirectNativeTestRunning } from './services/directNativeTtsTest'
+import { fireAndForget, reportError } from './utils/errors'
 import './App.css'
 
 type Screen =
@@ -64,8 +65,12 @@ function App() {
   const [resumeSession, setResumeSession] = useState<LastSession | null>(null)
   const [legalFromSettings, setLegalFromSettings] = useState(false)
 
+  const stopSpeech = () => {
+    fireAndForget(textToSpeechService.stop(), 'stopping speech')
+  }
+
   useEffect(() => {
-    preloadVoices(settings).catch(() => undefined)
+    fireAndForget(preloadVoices(settings), 'preloading voices')
   }, [settings.voiceId])
 
   useEffect(() => {
@@ -102,42 +107,53 @@ function App() {
     if (!Capacitor.isNativePlatform()) return
 
     const stateSub = CapApp.addListener('appStateChange', ({ isActive }) => {
-      if (!isActive && !isDirectNativeTestRunning()) void textToSpeechService.stop()
+      if (!isActive && !isDirectNativeTestRunning()) {
+        fireAndForget(textToSpeechService.stop(), 'stopping speech on app background')
+      }
     })
 
     return () => {
-      stateSub.then((handle) => handle.remove())
+      fireAndForget(
+        stateSub.then((handle) => handle.remove()),
+        'removing appStateChange listener',
+      )
     }
   }, [])
 
   useEffect(() => {
     if (!Capacitor.isNativePlatform()) return
-    StatusBar.setStyle({ style: Style.Dark }).catch(() => undefined)
-    StatusBar.setBackgroundColor({ color: '#0f2744' }).catch(() => undefined)
+    fireAndForget(StatusBar.setStyle({ style: Style.Dark }), 'setting status bar style')
+    fireAndForget(
+      StatusBar.setBackgroundColor({ color: '#0f2744' }),
+      'setting status bar color',
+    )
 
     const sub = CapApp.addListener('backButton', ({ canGoBack }) => {
       if (screen !== 'home') {
         if (screen === 'play') {
           if (window.confirm('Leave this session? Progress in this session will be saved.')) {
-            void textToSpeechService.stop()
+            stopSpeech()
             setPlayConfig(null)
             setResumeSession(null)
             setScreen('home')
           }
         } else if (screen === 'review-mistakes') {
-          void textToSpeechService.stop()
+          stopSpeech()
           setScreen('results')
         } else {
-          void textToSpeechService.stop()
+          stopSpeech()
           setScreen('home')
         }
         return
       }
-      if (canGoBack) CapApp.exitApp()
+      if (canGoBack) fireAndForget(CapApp.exitApp(), 'exiting app')
     })
 
     return () => {
-      sub.then((handle) => handle.remove())
+      fireAndForget(
+        sub.then((handle) => handle.remove()),
+        'removing backButton listener',
+      )
     }
   }, [screen])
 
@@ -149,7 +165,7 @@ function App() {
   }
 
   const handleFinish = (result: SessionResult) => {
-    void textToSpeechService.stop()
+    stopSpeech()
     clearLastSession()
     setSessionResult(result)
     setPlayConfig(null)
@@ -158,7 +174,7 @@ function App() {
   }
 
   const handleExitPlay = () => {
-    void textToSpeechService.stop()
+    stopSpeech()
     setPlayConfig(null)
     setResumeSession(null)
     setScreen('home')
@@ -185,7 +201,7 @@ function App() {
 
   const handleReviewMistakes = () => {
     if (!sessionResult) return
-    void textToSpeechService.stop()
+    stopSpeech()
     setScreen('review-mistakes')
   }
 
@@ -196,14 +212,18 @@ function App() {
       try {
         await navigator.share({ title: APP_NAME, text })
         return
-      } catch {
-        /* fall through */
+      } catch (error) {
+        // Dismissing the share sheet also rejects, so fall back silently to the clipboard.
+        if (!(error instanceof DOMException && error.name === 'AbortError')) {
+          reportError('native share failed, falling back to clipboard', error)
+        }
       }
     }
     try {
       await navigator.clipboard.writeText(text)
       window.alert('Score copied to clipboard.')
-    } catch {
+    } catch (error) {
+      reportError('clipboard copy failed, showing score instead', error)
       window.alert(text)
     }
   }
