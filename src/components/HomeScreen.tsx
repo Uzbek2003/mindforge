@@ -17,6 +17,10 @@ interface HomeScreenProps {
   mediumCompleted: number
   lastSession: LastSession | null
   isDifficultyUnlocked: (d: Difficulty) => boolean
+  adventureLevel: number
+  adventureXp: number
+  adventureClearedCount: number
+  adventureTotalNodes: number
   onStart: (config: {
     category: Category | 'all'
     difficulty: Difficulty
@@ -24,6 +28,7 @@ interface HomeScreenProps {
     resume?: boolean
     retryIds?: number[]
   }) => void
+  onOpenAdventure: () => void
   onOpenSettings: () => void
 }
 
@@ -39,7 +44,12 @@ export function HomeScreen({
   mediumCompleted,
   lastSession,
   isDifficultyUnlocked,
+  adventureLevel,
+  adventureXp,
+  adventureClearedCount,
+  adventureTotalNodes,
   onStart,
+  onOpenAdventure,
   onOpenSettings,
 }: HomeScreenProps) {
   const [category, setCategory] = useState<Category | 'all'>(WORLDS[0].category)
@@ -118,6 +128,20 @@ export function HomeScreen({
           <span>Five fresh puzzles across every world — resets each day</span>
         </span>
         <span className="daily-banner-cta">Play</span>
+      </button>
+
+      <button type="button" className="adventure-banner" onClick={onOpenAdventure}>
+        <span className="adventure-banner-icon" aria-hidden="true">
+          📘
+        </span>
+        <span className="adventure-banner-text">
+          <strong>Number Kingdom Story</strong>
+          <span>
+            Keeper Lv {adventureLevel} · {adventureXp} XP · {adventureClearedCount}/
+            {adventureTotalNodes} stages — learn through a short adventure
+          </span>
+        </span>
+        <span className="adventure-banner-cta">Enter</span>
       </button>
 
       {lastSession && (

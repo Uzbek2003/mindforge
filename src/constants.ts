@@ -10,4 +10,5 @@ export const STORAGE_KEYS = {
   settings: 'quiznova-settings',
   lastSession: 'quiznova-last-session',
   reportedQuestions: 'quiznova-reported',
+  adventure: 'quiznova-adventure',
 } as const

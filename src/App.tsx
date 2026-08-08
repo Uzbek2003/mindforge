@@ -6,12 +6,22 @@ import type { Category, Difficulty, LastSession, SessionMode, SessionResult } fr
 import { APP_NAME } from './constants'
 import { useProgress } from './hooks/useProgress'
 import { useSettings } from './hooks/useSettings'
+import { useAdventureProgress } from './hooks/useAdventureProgress'
+import { NUMBER_KINGDOM, getNumberKingdomNode } from './config/numberKingdom'
+import type { AdventureNodeId } from './types/adventure'
 import { HomeScreen } from './components/HomeScreen'
 import { PuzzleGame } from './components/PuzzleGame'
 import { ResultsScreen } from './components/ResultsScreen'
 import { ReviewMistakesScreen } from './components/ReviewMistakesScreen'
 import { SettingsScreen } from './components/SettingsScreen'
 import { LegalPage } from './components/LegalPage'
+import { AdventureIntroScreen } from './components/adventure/AdventureIntroScreen'
+import { AdventureMapScreen } from './components/adventure/AdventureMapScreen'
+import {
+  StoryBattleScreen,
+  type StoryBattleFinishPayload,
+} from './components/adventure/StoryBattleScreen'
+import { AdventureVictoryScreen } from './components/adventure/AdventureVictoryScreen'
 import { legalPathToScreen, screenToLegalPath } from './utils/routes'
 import { buildReviewMistakeItems } from './utils/reviewMistakes'
 import { preloadVoices, textToSpeechService } from './services/textToSpeech'
@@ -28,6 +38,10 @@ type Screen =
   | 'terms'
   | 'about'
   | 'contact'
+  | 'adventure-intro'
+  | 'adventure-map'
+  | 'adventure-battle'
+  | 'adventure-victory'
 
 interface PlayConfig {
   category: Category | 'all'
@@ -57,12 +71,15 @@ function App() {
   } = useProgress()
 
   const { settings, updateSetting } = useSettings()
+  const adventure = useAdventureProgress()
 
   const [screen, setScreen] = useState<Screen>('home')
   const [playConfig, setPlayConfig] = useState<PlayConfig | null>(null)
   const [sessionResult, setSessionResult] = useState<SessionResult | null>(null)
   const [resumeSession, setResumeSession] = useState<LastSession | null>(null)
   const [legalFromSettings, setLegalFromSettings] = useState(false)
+  const [battleNodeId, setBattleNodeId] = useState<AdventureNodeId | null>(null)
+  const [battleResult, setBattleResult] = useState<StoryBattleFinishPayload | null>(null)
 
   useEffect(() => {
     preloadVoices(settings).catch(() => undefined)
@@ -127,6 +144,20 @@ function App() {
         } else if (screen === 'review-mistakes') {
           void textToSpeechService.stop()
           setScreen('results')
+        } else if (screen === 'adventure-battle') {
+          if (window.confirm('Retreat from this encounter? Progress in this fight will be lost.')) {
+            void textToSpeechService.stop()
+            adventure.setActiveNode(null)
+            setBattleNodeId(null)
+            setScreen('adventure-map')
+          }
+        } else if (screen === 'adventure-victory') {
+          void textToSpeechService.stop()
+          setBattleResult(null)
+          setScreen('adventure-map')
+        } else if (screen === 'adventure-map' || screen === 'adventure-intro') {
+          void textToSpeechService.stop()
+          setScreen('home')
         } else {
           void textToSpeechService.stop()
           setScreen('home')
@@ -139,7 +170,7 @@ function App() {
     return () => {
       sub.then((handle) => handle.remove())
     }
-  }, [screen])
+  }, [adventure.setActiveNode, screen])
 
   const handleStart = (config: PlayConfig) => {
     setSessionResult(null)
@@ -212,8 +243,43 @@ function App() {
     setPlayConfig(null)
     setResumeSession(null)
     setSessionResult(null)
+    setBattleNodeId(null)
+    setBattleResult(null)
+    adventure.setActiveNode(null)
     window.history.pushState(null, '', '/')
     setScreen('home')
+  }
+
+  const openAdventure = () => {
+    void textToSpeechService.stop()
+    setBattleResult(null)
+    setBattleNodeId(null)
+    if (adventure.progress.highestClearedIndex >= 0 || adventure.progress.totalXp > 0) {
+      setScreen('adventure-map')
+      return
+    }
+    setScreen('adventure-intro')
+  }
+
+  const startBattle = (nodeId: AdventureNodeId) => {
+    if (!adventure.isNodeUnlocked(nodeId)) return
+    void textToSpeechService.stop()
+    adventure.setActiveNode(nodeId)
+    setBattleNodeId(nodeId)
+    setBattleResult(null)
+    setScreen('adventure-battle')
+  }
+
+  const handleBattleFinish = (result: StoryBattleFinishPayload) => {
+    void textToSpeechService.stop()
+    if (result.cleared) {
+      adventure.clearNode(result.nodeId)
+    } else {
+      adventure.setActiveNode(null)
+    }
+    setBattleResult(result)
+    setBattleNodeId(null)
+    setScreen('adventure-victory')
   }
 
   if (screen === 'play' && playConfig) {
@@ -287,6 +353,85 @@ function App() {
     )
   }
 
+  if (screen === 'adventure-intro') {
+    return (
+      <AdventureIntroScreen
+        playerLevel={adventure.level}
+        totalXp={adventure.progress.totalXp}
+        onBegin={() => setScreen('adventure-map')}
+        onBack={goHome}
+      />
+    )
+  }
+
+  if (screen === 'adventure-map') {
+    return (
+      <AdventureMapScreen
+        playerLevel={adventure.level}
+        xpCurrent={adventure.levelInfo.current}
+        xpNeeded={adventure.levelInfo.needed}
+        totalXp={adventure.progress.totalXp}
+        highestClearedIndex={adventure.progress.highestClearedIndex}
+        clearedNodeIds={adventure.progress.clearedNodeIds}
+        kingdomComplete={adventure.kingdomComplete}
+        onSelectNode={startBattle}
+        onBack={goHome}
+      />
+    )
+  }
+
+  if (screen === 'adventure-battle' && battleNodeId) {
+    const node = getNumberKingdomNode(battleNodeId)
+    if (!node) {
+      return (
+        <AdventureMapScreen
+          playerLevel={adventure.level}
+          xpCurrent={adventure.levelInfo.current}
+          xpNeeded={adventure.levelInfo.needed}
+          totalXp={adventure.progress.totalXp}
+          highestClearedIndex={adventure.progress.highestClearedIndex}
+          clearedNodeIds={adventure.progress.clearedNodeIds}
+          kingdomComplete={adventure.kingdomComplete}
+          onSelectNode={startBattle}
+          onBack={goHome}
+        />
+      )
+    }
+    return (
+      <StoryBattleScreen
+        node={node}
+        settings={settings}
+        playerLevel={adventure.level}
+        totalXp={adventure.progress.totalXp}
+        onAwardXp={adventure.awardXp}
+        onCompletePuzzle={completePuzzle}
+        onFinish={handleBattleFinish}
+        onExit={() => {
+          void textToSpeechService.stop()
+          adventure.setActiveNode(null)
+          setBattleNodeId(null)
+          setScreen('adventure-map')
+        }}
+      />
+    )
+  }
+
+  if (screen === 'adventure-victory' && battleResult) {
+    return (
+      <AdventureVictoryScreen
+        result={battleResult}
+        playerLevel={adventure.level}
+        totalXp={adventure.progress.totalXp}
+        kingdomComplete={adventure.kingdomComplete}
+        onContinueMap={() => {
+          setBattleResult(null)
+          setScreen('adventure-map')
+        }}
+        onHome={goHome}
+      />
+    )
+  }
+
   return (
     <HomeScreen
       completedIds={progress.completed}
@@ -298,7 +443,12 @@ function App() {
       mediumCompleted={mediumCompleted}
       lastSession={lastSession}
       isDifficultyUnlocked={isDifficultyUnlocked}
+      adventureLevel={adventure.level}
+      adventureXp={adventure.progress.totalXp}
+      adventureClearedCount={adventure.progress.clearedNodeIds.length}
+      adventureTotalNodes={NUMBER_KINGDOM.nodes.length}
       onStart={handleStart}
+      onOpenAdventure={openAdventure}
       onOpenSettings={() => setScreen('settings')}
     />
   )
