@@ -119,6 +119,7 @@ export function PuzzleGame({
         bestStreakInSession: calcSessionStreak(answers.map((a) => a.correct)),
         timeMs: Date.now() - startedAt.current,
         wrongPuzzleIds: answers.filter((a) => !a.correct).map((a) => a.puzzleId),
+        sessionAnswers: answers,
         category,
         difficulty,
         mode,
@@ -321,7 +322,9 @@ export function PuzzleGame({
 
       <div className="game-meta" role="status" aria-live="polite">
         <span className="badge">{category === 'all' ? 'Grand Adventure' : CATEGORY_LABELS[category]}</span>
-        <span className={`badge badge-${difficulty}`}>{DIFFICULTY_LABELS[difficulty]}</span>
+        <span className={`badge badge-${mode === 'daily' ? 'muted' : difficulty}`}>
+          {mode === 'daily' ? 'Mixed' : DIFFICULTY_LABELS[difficulty]}
+        </span>
         <span className="badge badge-muted">{SESSION_MODE_CONFIG[mode].label}</span>
         <span
           className={`timer-badge ${timerLow ? 'timer-low' : ''} ${revealed ? 'timer-paused' : ''}`}

@@ -65,9 +65,27 @@ export interface SessionResult {
   bestStreakInSession: number
   timeMs: number
   wrongPuzzleIds: number[]
+  /** Full session answers — used for Review Mistakes (user selection + timeout). */
+  sessionAnswers: SessionAnswer[]
   category: Category | 'all'
   difficulty: Difficulty
   mode: SessionMode
+}
+
+/** One incorrect answer ready for the Review Mistakes screen. */
+export interface ReviewMistakeItem {
+  puzzleId: number
+  question: string
+  options: [string, string, string, string]
+  selectedIndex: number | null
+  correctIndex: 0 | 1 | 2 | 3
+  userAnswerLabel: string
+  correctAnswerLabel: string
+  hint: string
+  explanation: string
+  category: Category
+  difficulty: Difficulty
+  timedOut?: boolean
 }
 
 export const CATEGORY_LABELS: Record<Category, string> = {

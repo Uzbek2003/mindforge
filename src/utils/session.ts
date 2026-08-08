@@ -1,4 +1,5 @@
 import type { Category, Difficulty, Puzzle, SessionMode } from '../types'
+import { DIFFICULTY_LABELS } from '../types'
 import { ALL_PUZZLES, getPuzzles } from '../data'
 
 function shuffle<T>(items: T[]): T[] {
@@ -60,6 +61,8 @@ export function buildSessionQueue(options: {
   }
 
   if (mode === 'daily') {
+    // Daily Challenge is a mixed-difficulty set across all categories.
+    // Session difficulty from Home is ignored here on purpose.
     return seededShuffle(ALL_PUZZLES, dailySeed()).slice(0, 5)
   }
 
@@ -102,6 +105,19 @@ export function formatDuration(ms: number): string {
   const minutes = Math.floor(totalSeconds / 60)
   const seconds = totalSeconds % 60
   return `${minutes}:${seconds.toString().padStart(2, '0')}`
+}
+
+/**
+ * Label for Results / game badges.
+ * Daily Challenge draws from the full puzzle bank (any difficulty), so never show
+ * the placeholder Home difficulty (currently "easy") as if it were the session level.
+ */
+export function formatSessionDifficultyLabel(
+  mode: SessionMode,
+  difficulty: Difficulty,
+): string {
+  if (mode === 'daily') return 'Mixed'
+  return DIFFICULTY_LABELS[difficulty]
 }
 
 export function calcSessionStreak(answers: boolean[]): number {
