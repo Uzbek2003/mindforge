@@ -242,10 +242,19 @@ export function PuzzleGame({
   ])
 
   const isCorrect = selected === displayPuzzle?.correctIndex
-  const questionSpeech = displayPuzzle && !revealed ? buildQuestionSpeech(displayPuzzle) : ''
+  const questionSpeech =
+    displayPuzzle && !revealed
+      ? buildQuestionSpeech(displayPuzzle, settings.voicePersona)
+      : ''
   const explanationSpeech =
     revealed && displayPuzzle
-      ? buildExplanationSpeech(displayPuzzle, selected, Boolean(isCorrect), timedOut)
+      ? buildExplanationSpeech(
+          displayPuzzle,
+          selected,
+          Boolean(isCorrect),
+          timedOut,
+          settings.voicePersona,
+        )
       : ''
   const panelSpeech = explanationSpeech || questionSpeech
 

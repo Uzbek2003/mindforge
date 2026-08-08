@@ -1,3 +1,5 @@
+import type { VoicePersona } from '../types'
+
 /** Normalize puzzle explanation text for natural speech synthesis. */
 export function normalizeSpeechText(text: string): string {
   let result = text
@@ -33,5 +35,24 @@ export function normalizeSpeechText(text: string): string {
   return result
 }
 
-export const TEST_VOICE_PHRASE =
-  'Hello. I am your QuizNova learning guide. This is a test of the selected English voice.'
+/** Persona-aware Settings test phrase. Original wording only — no real-person references. */
+export function getTestVoicePhrase(persona: VoicePersona): string {
+  switch (persona) {
+    case 'president':
+      return normalizeSpeechText(
+        'Hello. I am The President, your QuizNova quiz coach. This is a quick check that the voice is clear, confident, and ready for action.',
+      )
+    case 'night-guardian':
+      return normalizeSpeechText(
+        'Hello. I am the Night Guardian, your QuizNova learning guide. This is a test of the selected English voice.',
+      )
+    case 'system':
+    default:
+      return normalizeSpeechText(
+        'Hello. I am your QuizNova learning guide. This is a test of the selected English voice.',
+      )
+  }
+}
+
+/** @deprecated Prefer getTestVoicePhrase(persona). Kept for any legacy imports. */
+export const TEST_VOICE_PHRASE = getTestVoicePhrase('system')
