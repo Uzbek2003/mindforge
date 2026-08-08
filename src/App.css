@@ -1648,6 +1648,62 @@
   background: rgba(255, 255, 255, 0.12);
   border: 1px solid rgba(255, 255, 255, 0.18);
   color: #fff;
+  min-width: 0;
+  max-width: 100%;
+}
+
+/* Battle metadata: title on its own row, chips wrap/stack — no horizontal scroll on narrow phones. */
+.story-battle {
+  overflow-x: clip;
+  max-width: 100%;
+}
+
+.battle-meta {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.45rem;
+  margin-bottom: 1rem;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  overflow-x: clip;
+}
+
+.battle-meta-title {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  line-height: 1.25;
+  text-align: center;
+}
+
+.battle-meta-chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  gap: 0.45rem;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.battle-meta-chips .badge,
+.battle-meta-chips .timer-badge {
+  flex: 1 1 auto;
+  box-sizing: border-box;
+  min-width: 0;
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  line-height: 1.25;
+  text-align: center;
 }
 
 .battle-enemy-card {
@@ -1756,5 +1812,29 @@
 
   .adventure-node-card {
     min-height: 48px;
+  }
+
+  .battle-meta-chips {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.4rem;
+  }
+
+  .battle-meta-chips .timer-badge {
+    grid-column: 1 / -1;
+    justify-self: stretch;
+    text-align: center;
+  }
+}
+
+@media (max-width: 360px) {
+  .battle-meta-chips {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .battle-meta-chips .badge,
+  .battle-meta-chips .timer-badge {
+    width: 100%;
+    justify-self: stretch;
   }
 }

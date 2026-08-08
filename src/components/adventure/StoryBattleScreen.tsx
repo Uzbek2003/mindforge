@@ -315,15 +315,17 @@ export function StoryBattleScreen({
         </div>
       </div>
 
-      <div className="game-meta">
-        <span className="badge">{node.name}</span>
-        <span className="badge badge-muted">
-          Puzzle {index + 1}/{puzzles.length}
-        </span>
-        <span className="badge badge-muted">Attempt {attempt}/2</span>
-        {(phase === 'answering' || phase === 'retry') && (
-          <span className={`timer-badge ${timeLeft <= 10 ? 'timer-low' : ''}`}>⏱ {timeLeft}s</span>
-        )}
+      <div className="battle-meta" role="status" aria-live="polite">
+        <span className="badge battle-meta-title">{node.name}</span>
+        <div className="battle-meta-chips">
+          <span className="badge badge-muted">
+            Puzzle {index + 1}/{puzzles.length}
+          </span>
+          <span className="badge badge-muted">Attempt {attempt}/2</span>
+          {(phase === 'answering' || phase === 'retry') && (
+            <span className={`timer-badge ${timeLeft <= 10 ? 'timer-low' : ''}`}>⏱ {timeLeft}s</span>
+          )}
+        </div>
       </div>
 
       {(phase === 'answering' || phase === 'retry') && (
