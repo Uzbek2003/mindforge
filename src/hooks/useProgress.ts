@@ -3,6 +3,13 @@ import type { Difficulty, GameProgress, LastSession } from '../types'
 import { ALL_PUZZLES } from '../data'
 import { UNLOCK_THRESHOLDS } from '../types'
 import { STORAGE_KEYS } from '../constants'
+import {
+  MAX_IMPORT_BYTES,
+  parseJsonObject,
+  sanitizeLastSession,
+  sanitizeProgress,
+  sanitizeReportedQuestions,
+} from '../utils/validation'
 
 const defaultProgress: GameProgress = {
   completed: [],
@@ -17,7 +24,7 @@ function loadProgress(): GameProgress {
       localStorage.getItem(STORAGE_KEYS.progress) ??
       localStorage.getItem(STORAGE_KEYS.progressLegacy)
     if (!raw) return { ...defaultProgress }
-    const parsed = { ...defaultProgress, ...JSON.parse(raw) }
+    const parsed = sanitizeProgress(parseJsonObject(raw))
     if (!localStorage.getItem(STORAGE_KEYS.progress)) {
       localStorage.setItem(STORAGE_KEYS.progress, JSON.stringify(parsed))
     }
@@ -34,7 +41,7 @@ function saveProgress(progress: GameProgress) {
 function loadLastSession(): LastSession | null {
   try {
     const raw = localStorage.getItem(STORAGE_KEYS.lastSession)
-    return raw ? JSON.parse(raw) : null
+    return raw ? sanitizeLastSession(parseJsonObject(raw)) : null
   } catch {
     return null
   }
@@ -51,7 +58,7 @@ function saveLastSession(session: LastSession | null) {
 function loadReported(): number[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEYS.reportedQuestions)
-    return raw ? JSON.parse(raw) : []
+    return raw ? sanitizeReportedQuestions(JSON.parse(raw)) : []
   } catch {
     return []
   }
@@ -129,16 +136,24 @@ export function useProgress() {
           resolve('cancelled')
           return
         }
+        if (file.size > MAX_IMPORT_BYTES) {
+          resolve('error')
+          return
+        }
         try {
           const text = await file.text()
-          const data = JSON.parse(text)
-          if (!data.progress?.completed) {
+          const data = parseJsonObject(text)
+          const importedProgress =
+            data && typeof data.progress === 'object' && data.progress !== null
+              ? (data.progress as Record<string, unknown>)
+              : null
+          if (!importedProgress || !Array.isArray(importedProgress.completed)) {
             resolve('error')
             return
           }
-          setProgress({ ...defaultProgress, ...data.progress })
-          if (Array.isArray(data.reportedQuestions)) {
-            setReportedQuestions(data.reportedQuestions)
+          setProgress(sanitizeProgress(importedProgress))
+          if (data && Array.isArray(data.reportedQuestions)) {
+            setReportedQuestions(sanitizeReportedQuestions(data.reportedQuestions))
           }
           resolve('success')
         } catch {
