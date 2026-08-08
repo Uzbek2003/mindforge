@@ -1351,3 +1351,490 @@
     min-height: 48px;
   }
 }
+
+/* Number Kingdom adventure */
+.adventure-screen {
+  padding-bottom: 3rem;
+}
+
+.adventure-hero {
+  margin-bottom: 1.25rem;
+}
+
+.adventure-eyebrow {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.65);
+  margin-bottom: 0.45rem;
+}
+
+.adventure-title {
+  font-size: clamp(1.55rem, 5vw, 2rem);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  color: #fff;
+  margin: 0 0 0.45rem;
+  line-height: 1.15;
+}
+
+.adventure-keeper {
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 0.92rem;
+  margin: 0;
+}
+
+.adventure-level-card {
+  margin-top: 1rem;
+  padding: 0.9rem 1rem;
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  color: #fff;
+}
+
+.adventure-level-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.55rem;
+  font-size: 0.9rem;
+}
+
+.adventure-xp-bar,
+.battle-hp-bar {
+  height: 0.65rem;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.28);
+  overflow: hidden;
+}
+
+.adventure-xp-fill {
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #38bdf8, #93c5fd);
+  transition: width 0.35s ease;
+}
+
+.battle-hp-fill {
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #34d399, #6ee7b7);
+  transition: width 0.4s ease;
+}
+
+.adventure-story-panel .adventure-story-line {
+  color: var(--text-muted);
+  margin: 0 0 0.75rem;
+  line-height: 1.55;
+}
+
+.adventure-path-list {
+  margin: 0;
+  padding-left: 1.1rem;
+  display: grid;
+  gap: 0.55rem;
+}
+
+.adventure-path-list li {
+  display: flex;
+  gap: 0.55rem;
+  align-items: center;
+  flex-wrap: wrap;
+  color: var(--text);
+}
+
+.adventure-kind-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  background: rgba(37, 99, 235, 0.12);
+  color: #1d4ed8;
+}
+
+.adventure-kind-badge.kind-enemy {
+  background: rgba(217, 119, 6, 0.14);
+  color: #b45309;
+}
+
+.adventure-kind-badge.kind-boss {
+  background: rgba(14, 116, 144, 0.14);
+  color: #0e7490;
+}
+
+.adventure-node-list {
+  display: grid;
+  gap: 0.75rem;
+  margin-bottom: 1.25rem;
+}
+
+.adventure-node-card {
+  display: flex;
+  gap: 0.85rem;
+  align-items: flex-start;
+  text-align: left;
+  width: 100%;
+  padding: 1rem;
+  border-radius: var(--radius-lg);
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: var(--shadow-soft);
+  color: var(--text);
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+.adventure-node-card.current {
+  border-color: rgba(37, 99, 235, 0.55);
+  box-shadow: 0 12px 28px rgba(37, 99, 235, 0.22);
+}
+
+.adventure-node-card.boss.current {
+  border-color: rgba(14, 116, 144, 0.55);
+}
+
+.adventure-node-card.cleared {
+  opacity: 0.92;
+}
+
+.adventure-node-card.locked {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.adventure-node-card:not(.locked):hover {
+  transform: translateY(-1px);
+}
+
+.adventure-node-icon {
+  font-size: 1.6rem;
+  line-height: 1;
+  width: 2.5rem;
+  text-align: center;
+}
+
+.adventure-node-body {
+  display: grid;
+  gap: 0.3rem;
+  min-width: 0;
+}
+
+.adventure-node-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  align-items: center;
+}
+
+.adventure-node-name {
+  font-size: 1.05rem;
+}
+
+.adventure-node-synopsis {
+  color: var(--text-muted);
+  font-size: 0.88rem;
+  line-height: 1.45;
+}
+
+.adventure-cleared-tag,
+.adventure-current-tag,
+.adventure-locked-tag {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 0.12rem 0.45rem;
+  border-radius: 999px;
+}
+
+.adventure-cleared-tag {
+  background: rgba(21, 128, 61, 0.12);
+  color: #15803d;
+}
+
+.adventure-current-tag {
+  background: rgba(37, 99, 235, 0.12);
+  color: #1d4ed8;
+}
+
+.adventure-locked-tag {
+  background: rgba(71, 85, 105, 0.12);
+  color: #475569;
+}
+
+.adventure-world-preview .adventure-preview-grid {
+  list-style: none;
+  margin: 0.75rem 0 0;
+  padding: 0;
+  display: grid;
+  gap: 0.65rem;
+}
+
+.adventure-preview-card {
+  display: grid;
+  gap: 0.2rem;
+  padding: 0.85rem 0.95rem;
+  border-radius: var(--radius);
+  background: rgba(15, 23, 42, 0.04);
+  border: 1px dashed rgba(15, 23, 42, 0.18);
+}
+
+.adventure-preview-card strong {
+  color: var(--text);
+}
+
+.adventure-preview-card span {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+.adventure-banner {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  width: 100%;
+  margin: 0 0 1.25rem;
+  padding: 1rem 1.1rem;
+  border: none;
+  border-radius: var(--radius-lg);
+  text-align: left;
+  color: #fff;
+  background: linear-gradient(135deg, #1d4ed8 0%, #2563eb 45%, #38bdf8 100%);
+  box-shadow: 0 12px 28px rgba(37, 99, 235, 0.28);
+}
+
+.adventure-banner-icon {
+  font-size: 1.6rem;
+  line-height: 1;
+}
+
+.adventure-banner-text {
+  display: grid;
+  gap: 0.15rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.adventure-banner-text strong {
+  font-size: 1.02rem;
+}
+
+.adventure-banner-text span {
+  font-size: 0.86rem;
+  opacity: 0.92;
+}
+
+.adventure-banner-cta {
+  font-weight: 700;
+  font-size: 0.9rem;
+  padding: 0.45rem 0.8rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.18);
+  white-space: nowrap;
+}
+
+.battle-top {
+  display: grid;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+  padding: 0.95rem 1rem;
+  border-radius: var(--radius-lg);
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  color: #fff;
+  min-width: 0;
+  max-width: 100%;
+}
+
+/* Battle metadata: title on its own row, chips wrap/stack — no horizontal scroll on narrow phones. */
+.story-battle {
+  overflow-x: clip;
+  max-width: 100%;
+}
+
+.battle-meta {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.45rem;
+  margin-bottom: 1rem;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  overflow-x: clip;
+}
+
+.battle-meta-title {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  line-height: 1.25;
+  text-align: center;
+}
+
+.battle-meta-chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  gap: 0.45rem;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.battle-meta-chips .badge,
+.battle-meta-chips .timer-badge {
+  flex: 1 1 auto;
+  box-sizing: border-box;
+  min-width: 0;
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  line-height: 1.25;
+  text-align: center;
+}
+
+.battle-enemy-card {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+}
+
+.battle-enemy-icon {
+  font-size: 1.8rem;
+  line-height: 1;
+}
+
+.battle-enemy-meta {
+  display: grid;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.battle-enemy-meta .panel-hint {
+  color: rgba(255, 255, 255, 0.78);
+  margin: 0;
+}
+
+.battle-enemy-meta .adventure-kind-badge {
+  justify-self: start;
+}
+
+.battle-hp-labels,
+.battle-player-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  font-size: 0.85rem;
+}
+
+.battle-hp-block {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.story-battle.fx-hit .battle-hp-fill {
+  filter: brightness(1.15);
+}
+
+.story-battle.fx-hit .battle-enemy-icon {
+  animation: adventure-pulse 0.55s ease;
+}
+
+@keyframes adventure-pulse {
+  0% {
+    transform: scale(1);
+  }
+  40% {
+    transform: scale(1.12);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.adventure-retry-hint {
+  margin-bottom: 0.85rem;
+}
+
+.adventure-defeat-note {
+  margin-top: 0.75rem;
+}
+
+.adventure-summary-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.55rem;
+}
+
+.adventure-summary-list li {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.45rem 0;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+  color: var(--text-muted);
+}
+
+.adventure-summary-list strong {
+  color: var(--text);
+}
+
+.adventure-victory-actions {
+  display: grid;
+  gap: 0.65rem;
+}
+
+@media (max-width: 480px) {
+  .adventure-banner {
+    flex-wrap: wrap;
+  }
+
+  .adventure-banner-cta {
+    width: 100%;
+    text-align: center;
+  }
+
+  .adventure-node-card {
+    min-height: 48px;
+  }
+
+  .battle-meta-chips {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.4rem;
+  }
+
+  .battle-meta-chips .timer-badge {
+    grid-column: 1 / -1;
+    justify-self: stretch;
+    text-align: center;
+  }
+}
+
+@media (max-width: 360px) {
+  .battle-meta-chips {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .battle-meta-chips .badge,
+  .battle-meta-chips .timer-badge {
+    width: 100%;
+    justify-self: stretch;
+  }
+}

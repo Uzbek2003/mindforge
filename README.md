@@ -72,11 +72,11 @@ Privacy policy URL (after deploy): `https://your-domain.com/privacy`
 | Custom app icon + splash (store quality) | Partial — basic icon only |
 | Play Store / App Store screenshots | **Not done** |
 | Real-device Android QA | **You must test** |
-| Support email configured | Placeholder: support@quiznova.app |
+| Support email configured | Done — shakhzodrafikov915@gmail.com |
 
 ## Support
 
-Email: support@quiznova.app
+Email: shakhzodrafikov915@gmail.com
 
 ## License
 
