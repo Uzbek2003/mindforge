@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { DEFAULT_SETTINGS, type AppSettings } from '../types'
 import { STORAGE_KEYS } from '../constants'
+import { normalizeVoicePersona } from '../utils/voicePersona'
 import { normalizeVoicePitch } from '../utils/voiceProsody'
 
 function loadSettings(): AppSettings {
@@ -9,6 +10,7 @@ function loadSettings(): AppSettings {
     if (!raw) return { ...DEFAULT_SETTINGS }
     const parsed = { ...DEFAULT_SETTINGS, ...JSON.parse(raw) } as AppSettings
     parsed.voicePitch = normalizeVoicePitch(parsed.voicePitch as string)
+    parsed.voicePersona = normalizeVoicePersona(parsed.voicePersona as string)
     if (parsed.voiceSpeed !== 'slow' && parsed.voiceSpeed !== 'fast') {
       parsed.voiceSpeed = 'normal'
     }
@@ -35,9 +37,13 @@ export function useSettings() {
     setSettings((prev) => ({ ...prev, [key]: value }))
   }, [])
 
+  const updateSettings = useCallback((partial: Partial<AppSettings>) => {
+    setSettings((prev) => ({ ...prev, ...partial }))
+  }, [])
+
   const resetSettings = useCallback(() => {
     setSettings({ ...DEFAULT_SETTINGS })
   }, [])
 
-  return { settings, updateSetting, resetSettings }
+  return { settings, updateSetting, updateSettings, resetSettings }
 }

@@ -1,13 +1,18 @@
 import { Capacitor } from '@capacitor/core'
 import { TextToSpeech, QueueStrategy, type TTSOptions } from '@capacitor-community/text-to-speech'
 import type { AppSettings } from '../types'
-import { normalizeSpeechText, TEST_VOICE_PHRASE } from '../utils/speechText'
+import { isEnglishLang, normalizeLang } from '../utils/speechLang'
+import { getTestVoicePhrase, normalizeSpeechText } from '../utils/speechText'
 import { isDirectNativeTestRunning } from './directNativeTtsTest'
 import {
   resolveSpeechPitch,
   resolveSpeechRate,
   resolveSpeechVolume,
 } from '../utils/voiceProsody'
+import {
+  resolveVoiceIdForPersona,
+  type CatalogVoice,
+} from '../utils/voiceSelection'
 
 export interface VoiceOption {
   id: string
@@ -47,14 +52,7 @@ function delay(ms: number) {
   return new Promise<void>((resolve) => window.setTimeout(resolve, ms))
 }
 
-export function normalizeLang(lang: string) {
-  return lang.trim().replace(/_/g, '-').toLowerCase()
-}
-
-export function isEnglishLang(lang: string) {
-  const norm = normalizeLang(lang)
-  return norm === 'en' || norm.startsWith('en-')
-}
+export { normalizeLang, isEnglishLang }
 
 function englishLangRank(lang: string) {
   const norm = normalizeLang(lang)
@@ -164,10 +162,49 @@ class TextToSpeechService {
     return resolveSpeechVolume(settings.voiceVolume)
   }
 
-  private resolveExplicitNativeVoiceIndex(settings: AppSettings): number | undefined {
-    if (settings.voiceId == null || settings.voiceId === '') return undefined
+  private nativeCatalog(): CatalogVoice[] {
+    return this.nativeVoices.map((voice, index) => ({
+      id: String(index),
+      name: voice.name,
+      lang: voice.lang.replace(/_/g, '-'),
+      voiceURI: voice.voiceURI,
+      default: voice.default,
+    }))
+  }
 
-    const selectedIndex = Number(settings.voiceId)
+  private browserCatalog(): { catalog: CatalogVoice[]; voices: SpeechSynthesisVoice[] } {
+    const voices = typeof window !== 'undefined' ? window.speechSynthesis.getVoices() : []
+    const catalog = voices
+      .filter((voice) => isEnglishLang(voice.lang))
+      .map((voice) => ({
+        id: voice.voiceURI || voice.name,
+        name: voice.name,
+        lang: voice.lang,
+        voiceURI: voice.voiceURI,
+        localService: voice.localService,
+        default: voice.default,
+      }))
+    return { catalog, voices }
+  }
+
+  /** Locked voiceId wins; otherwise persona heuristic; otherwise engine default (null). */
+  private resolveEffectiveVoiceId(settings: AppSettings): string | null {
+    if (isNativeTtsPath()) {
+      return resolveVoiceIdForPersona(
+        settings.voicePersona,
+        this.nativeCatalog(),
+        settings.voiceId,
+      )
+    }
+    const { catalog } = this.browserCatalog()
+    return resolveVoiceIdForPersona(settings.voicePersona, catalog, settings.voiceId)
+  }
+
+  private resolveNativeVoiceIndex(settings: AppSettings): number | undefined {
+    const effectiveId = this.resolveEffectiveVoiceId(settings)
+    if (effectiveId == null || effectiveId === '') return undefined
+
+    const selectedIndex = Number(effectiveId)
     if (Number.isNaN(selectedIndex)) return undefined
 
     const voice = this.nativeVoices[selectedIndex]
@@ -181,29 +218,34 @@ class TextToSpeechService {
     if (!isNativeTtsPath()) return
     if (this.nativeVoices.length === 0) return
 
-    if (this.resolveExplicitNativeVoiceIndex(settings) === undefined) {
+    const selectedIndex = Number(settings.voiceId)
+    const voice = Number.isNaN(selectedIndex) ? undefined : this.nativeVoices[selectedIndex]
+    if (!voice || !isEnglishLang(voice.lang)) {
       devLog('clearing invalid stored voice', settings.voiceId)
       this.onClearVoiceId?.()
     }
   }
 
   private pickBrowserVoice(settings: AppSettings): SpeechSynthesisVoice | undefined {
-    if (!settings.voiceId) return undefined
+    const { catalog, voices } = this.browserCatalog()
+    const effectiveId = resolveVoiceIdForPersona(
+      settings.voicePersona,
+      catalog,
+      settings.voiceId,
+    )
+    if (!effectiveId) return undefined
 
-    const voices = typeof window !== 'undefined' ? window.speechSynthesis.getVoices() : []
-    const english = voices.filter((voice) => isEnglishLang(voice.lang))
-
-    return english.find(
+    return voices.find(
       (voice) =>
-        voice.voiceURI === settings.voiceId ||
-        voice.name === settings.voiceId ||
-        String(voices.indexOf(voice)) === settings.voiceId,
+        voice.voiceURI === effectiveId ||
+        voice.name === effectiveId ||
+        String(voices.indexOf(voice)) === effectiveId,
     )
   }
 
   private updateSelectedVoice(settings: AppSettings) {
     if (isNativeTtsPath()) {
-      const index = this.resolveExplicitNativeVoiceIndex(settings)
+      const index = this.resolveNativeVoiceIndex(settings)
       if (index == null) {
         this.selectedVoice = DEFAULT_SYSTEM_VOICE
         this.language = 'en'
@@ -316,12 +358,17 @@ class TextToSpeechService {
   }
 
   private async nativeSpeak(text: string, settings: AppSettings, token: number): Promise<void> {
-    const explicitVoice = this.resolveExplicitNativeVoiceIndex(settings)
-
-    if (settings.voiceId != null && settings.voiceId !== '' && explicitVoice === undefined && this.nativeVoices.length > 0) {
-      this.onClearVoiceId?.()
-      this.updateSelectedVoice({ ...settings, voiceId: null })
+    if (settings.voiceId != null && settings.voiceId !== '' && this.nativeVoices.length > 0) {
+      const selectedIndex = Number(settings.voiceId)
+      const locked = Number.isNaN(selectedIndex) ? undefined : this.nativeVoices[selectedIndex]
+      if (!locked || !isEnglishLang(locked.lang)) {
+        this.onClearVoiceId?.()
+        settings = { ...settings, voiceId: null }
+      }
     }
+
+    const explicitVoice = this.resolveNativeVoiceIndex(settings)
+    this.updateSelectedVoice(settings)
 
     devLog('platform', Capacitor.getPlatform(), 'isNative', Capacitor.isNativePlatform())
     devLog('selected voice', this.selectedVoice)
@@ -530,7 +577,8 @@ class TextToSpeechService {
   async testVoice(settings: AppSettings): Promise<void> {
     if (!settings.soundEnabled || settings.voiceVolume <= 0) return
     // Allow the Settings "Test voice" button even if the main toggle was just flipped on.
-    await this.speak(TEST_VOICE_PHRASE, { ...settings, voiceExplanationsEnabled: true })
+    const phrase = getTestVoicePhrase(settings.voicePersona)
+    await this.speak(phrase, { ...settings, voiceExplanationsEnabled: true })
   }
 }
 
