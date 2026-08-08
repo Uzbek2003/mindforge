@@ -73,7 +73,8 @@ Privacy policy URL (after deploy): `https://your-domain.com/privacy`
 | Manual review of all 100 questions | Done |
 | Real-device Android QA (Samsung) | Done |
 | Support email configured | Done — shakhzodrafikov915@gmail.com |
-| Custom app icon + splash (store quality) | Partial — basic icon only |
+| Custom app icon + splash (store quality) | Done — Knowledge Cube icons/splash installed (physical Android QA pending) |
+| Play Store feature graphic + 512 icon | Done — see `public/feature-graphic-1024x500.png` and `public/play-icon-512.png` |
 | Play Store / App Store screenshots | **Not done** |
 | Release signing keystore | **Not done** |
 

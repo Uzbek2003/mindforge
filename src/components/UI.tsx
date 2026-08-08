@@ -13,7 +13,7 @@ export function Header({ onHome, showHome, homeLabel = 'Home', onSettings }: Hea
   return (
     <header className="header">
       <div className="header-brand">
-        <span className="logo-mark" aria-hidden="true">Q</span>
+        <img className="logo-mark" src="/logo-mark.png" alt="" width={44} height={44} aria-hidden="true" />
         <div>
           <h1>{APP_NAME}</h1>
           <p className="tagline">{APP_TAGLINE}</p>
@@ -94,10 +94,10 @@ export function DifficultyCard({
       aria-disabled={!unlocked}
     >
       <span className="difficulty-label">{DIFFICULTY_LABELS[difficulty]}</span>
+      {!unlocked && <span className="lock-icon">Locked</span>}
       <span className="difficulty-meta">
         {unlocked ? `${completed}/${count} solved` : remainingHint}
       </span>
-      {!unlocked && <span className="lock-icon" aria-hidden="true">Locked</span>}
     </button>
   )
 }
