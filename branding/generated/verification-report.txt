@@ -1,0 +1,33 @@
+android/app/src/main/res/mipmap-mdpi/ic_launcher.png: 48x48 expected 48x48 OK
+android/app/src/main/res/mipmap-mdpi/ic_launcher_round.png: 48x48 expected 48x48 OK
+android/app/src/main/res/mipmap-hdpi/ic_launcher.png: 72x72 expected 72x72 OK
+android/app/src/main/res/mipmap-hdpi/ic_launcher_round.png: 72x72 expected 72x72 OK
+android/app/src/main/res/mipmap-xhdpi/ic_launcher.png: 96x96 expected 96x96 OK
+android/app/src/main/res/mipmap-xhdpi/ic_launcher_round.png: 96x96 expected 96x96 OK
+android/app/src/main/res/mipmap-xxhdpi/ic_launcher.png: 144x144 expected 144x144 OK
+android/app/src/main/res/mipmap-xxhdpi/ic_launcher_round.png: 144x144 expected 144x144 OK
+android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png: 192x192 expected 192x192 OK
+android/app/src/main/res/mipmap-xxxhdpi/ic_launcher_round.png: 192x192 expected 192x192 OK
+android/app/src/main/res/mipmap-mdpi/ic_launcher_foreground.png: 108x108 safe_bbox=(28, 25, 81, 83) safe_ok=True OK
+android/app/src/main/res/mipmap-hdpi/ic_launcher_foreground.png: 162x162 safe_bbox=(41, 37, 121, 125) safe_ok=True OK
+android/app/src/main/res/mipmap-xhdpi/ic_launcher_foreground.png: 216x216 safe_bbox=(55, 49, 160, 166) safe_ok=True OK
+android/app/src/main/res/mipmap-xxhdpi/ic_launcher_foreground.png: 324x324 safe_bbox=(82, 75, 242, 249) safe_ok=True OK
+android/app/src/main/res/mipmap-xxxhdpi/ic_launcher_foreground.png: 432x432 safe_bbox=(109, 99, 322, 332) safe_ok=True OK
+android/app/src/main/res/drawable/splash.png: 480x320 expected 480x320 OK
+android/app/src/main/res/drawable-port-mdpi/splash.png: 320x480 expected 320x480 OK
+android/app/src/main/res/drawable-port-hdpi/splash.png: 480x800 expected 480x800 OK
+android/app/src/main/res/drawable-port-xhdpi/splash.png: 720x1280 expected 720x1280 OK
+android/app/src/main/res/drawable-port-xxhdpi/splash.png: 960x1600 expected 960x1600 OK
+android/app/src/main/res/drawable-port-xxxhdpi/splash.png: 1280x1920 expected 1280x1920 OK
+android/app/src/main/res/drawable-land-mdpi/splash.png: 480x320 expected 480x320 OK
+android/app/src/main/res/drawable-land-hdpi/splash.png: 800x480 expected 800x480 OK
+android/app/src/main/res/drawable-land-xhdpi/splash.png: 1280x720 expected 1280x720 OK
+android/app/src/main/res/drawable-land-xxhdpi/splash.png: 1600x960 expected 1600x960 OK
+android/app/src/main/res/drawable-land-xxxhdpi/splash.png: 1920x1280 expected 1920x1280 OK
+public/icon-192.png: (192, 192) mode=RGB OK
+public/icon-512.png: (512, 512) mode=RGB OK
+public/play-icon-512.png: (512, 512) mode=RGB OK
+public/feature-graphic-1024x500.png: (1024, 500) mode=RGB OK
+public/favicon-32.png: (32, 32) mode=RGB OK
+
+ALL_PASS=True (31/31)

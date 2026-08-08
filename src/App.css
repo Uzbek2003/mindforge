@@ -19,16 +19,14 @@
 }
 
 .logo-mark {
-  display: grid;
-  place-items: center;
+  display: block;
   width: 2.75rem;
   height: 2.75rem;
   border-radius: 14px;
-  background: linear-gradient(145deg, #2563eb, #7c3aed);
-  color: white;
-  font-size: 1.15rem;
-  font-weight: 800;
-  box-shadow: 0 8px 20px rgba(37, 99, 235, 0.35);
+  object-fit: cover;
+  background: #0f1117;
+  box-shadow: 0 8px 20px rgba(15, 17, 23, 0.45);
+  flex-shrink: 0;
 }
 
 .header h1 {
@@ -528,22 +526,23 @@
 /* Difficulty grid */
 .difficulty-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 0.65rem;
 }
 
 .difficulty-card {
-  position: relative;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 0.25rem;
-  padding: 0.85rem;
+  gap: 0.35rem;
+  min-width: 0;
+  padding: 0.75rem 0.65rem;
   background: var(--bg-elevated);
   border: 2px solid var(--border);
   border-radius: var(--radius);
   color: var(--text);
   text-align: left;
+  overflow-wrap: anywhere;
   transition: border-color 0.15s, opacity 0.15s;
 }
 
@@ -556,25 +555,67 @@
 .difficulty-hard { color: var(--hard); }
 
 .difficulty-card.locked {
-  opacity: 0.55;
+  opacity: 0.75;
   cursor: not-allowed;
+  gap: 0.45rem;
 }
 
 .difficulty-label {
   font-weight: 700;
   font-size: 0.95rem;
+  line-height: 1.25;
 }
 
 .difficulty-meta {
   font-size: 0.72rem;
+  line-height: 1.35;
   color: var(--text-muted);
+  overflow-wrap: anywhere;
 }
 
 .lock-icon {
-  position: absolute;
-  top: 0.5rem;
-  right: 0.5rem;
-  font-size: 0.85rem;
+  display: inline-block;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  line-height: 1.25;
+  padding: 0.1rem 0;
+}
+
+@media (max-width: 390px) {
+  .difficulty-grid {
+    gap: 0.5rem;
+  }
+
+  .difficulty-card {
+    padding: 0.7rem 0.5rem;
+    gap: 0.4rem;
+  }
+
+  .difficulty-card.locked {
+    gap: 0.5rem;
+  }
+
+  .difficulty-label {
+    font-size: 0.88rem;
+  }
+
+  .difficulty-meta,
+  .lock-icon {
+    font-size: 0.66rem;
+  }
+}
+
+@media (max-width: 320px) {
+  .difficulty-card {
+    padding: 0.65rem 0.45rem;
+  }
+
+  .difficulty-card.locked {
+    gap: 0.55rem;
+  }
 }
 
 /* Buttons */
