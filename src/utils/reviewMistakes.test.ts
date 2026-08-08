@@ -114,6 +114,36 @@ describe('review mistakes', () => {
     expect(item.timedOut).toBe(true)
   })
 
+  it('falls back to wrongPuzzleIds for legacy results without sessionAnswers', () => {
+    const puzzle = ALL_PUZZLES[2]
+    const result = makeResult({
+      incorrect: 1,
+      total: 1,
+      wrongPuzzleIds: [puzzle.id],
+      sessionAnswers: [],
+    })
+
+    expect(getSessionAnswers(result)).toEqual([
+      { puzzleId: puzzle.id, selectedIndex: null, correct: false },
+    ])
+
+    const [item] = buildReviewMistakeItems(result)
+    expect(item.userAnswerLabel).toBe('No answer (timed out)')
+    expect(item.selectedIndex).toBeNull()
+  })
+
+  it('skips answers referencing puzzles that no longer exist', () => {
+    const result = makeResult({
+      incorrect: 1,
+      total: 1,
+      wrongPuzzleIds: [-999],
+      sessionAnswers: [{ puzzleId: -999, selectedIndex: 0, correct: false }],
+    })
+
+    expect(buildReviewMistakeItems(result)).toEqual([])
+    expect(hasMistakesToReview(result)).toBe(false)
+  })
+
   it('navigates previous/next with safe clamps', () => {
     expect(clampReviewIndex(-2, 3)).toBe(0)
     expect(clampReviewIndex(9, 3)).toBe(2)

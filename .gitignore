@@ -28,3 +28,6 @@ dist-ssr
 *.keystore
 key.properties
 android/key.properties
+
+# Test coverage
+coverage
