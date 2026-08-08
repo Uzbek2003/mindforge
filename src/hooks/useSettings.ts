@@ -2,31 +2,22 @@ import { useCallback, useEffect, useState } from 'react'
 import { DEFAULT_SETTINGS, type AppSettings } from '../types'
 import { STORAGE_KEYS } from '../constants'
 import { normalizeVoicePitch } from '../utils/voiceProsody'
+import { readMergedJson, writeJson } from '../utils/storage'
 
 function loadSettings(): AppSettings {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEYS.settings)
-    if (!raw) return { ...DEFAULT_SETTINGS }
-    const parsed = { ...DEFAULT_SETTINGS, ...JSON.parse(raw) } as AppSettings
-    parsed.voicePitch = normalizeVoicePitch(parsed.voicePitch as string)
-    if (parsed.voiceSpeed !== 'slow' && parsed.voiceSpeed !== 'fast') {
-      parsed.voiceSpeed = 'normal'
-    }
-    return parsed
-  } catch {
-    return { ...DEFAULT_SETTINGS }
+  const parsed = readMergedJson(STORAGE_KEYS.settings, DEFAULT_SETTINGS)
+  parsed.voicePitch = normalizeVoicePitch(parsed.voicePitch as string)
+  if (parsed.voiceSpeed !== 'slow' && parsed.voiceSpeed !== 'fast') {
+    parsed.voiceSpeed = 'normal'
   }
-}
-
-function saveSettings(settings: AppSettings) {
-  localStorage.setItem(STORAGE_KEYS.settings, JSON.stringify(settings))
+  return parsed
 }
 
 export function useSettings() {
   const [settings, setSettings] = useState<AppSettings>(loadSettings)
 
   useEffect(() => {
-    saveSettings(settings)
+    writeJson(STORAGE_KEYS.settings, settings)
     document.documentElement.dataset.textSize = settings.textSize
     document.documentElement.dataset.reduceMotion = settings.reduceAnimations ? 'true' : 'false'
   }, [settings])

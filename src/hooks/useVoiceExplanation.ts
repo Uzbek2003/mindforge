@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { AppSettings } from '../types'
 import { textToSpeechService, type TtsState } from '../services/textToSpeech'
+import { isVoiceEnabled } from '../utils/voiceSettings'
 
 /**
  * Stable voice controls for Night Guardian TTS.
@@ -14,11 +15,13 @@ export function useVoiceExplanation(settings: AppSettings) {
 
   useEffect(() => textToSpeechService.subscribe(setTtsState), [])
 
+  const voiceEnabled = isVoiceEnabled(settings)
+
   useEffect(() => {
-    if (!settings.voiceExplanationsEnabled || !settings.soundEnabled) {
+    if (!voiceEnabled) {
       void textToSpeechService.stop()
     }
-  }, [settings.voiceExplanationsEnabled, settings.soundEnabled])
+  }, [voiceEnabled])
 
   useEffect(() => {
     void textToSpeechService.stop()
@@ -26,7 +29,7 @@ export function useVoiceExplanation(settings: AppSettings) {
 
   const play = useCallback((text: string) => {
     const current = settingsRef.current
-    if (!current.voiceExplanationsEnabled || !current.soundEnabled) return
+    if (!isVoiceEnabled(current)) return
     void textToSpeechService.speak(text, current)
   }, [])
 
@@ -40,7 +43,7 @@ export function useVoiceExplanation(settings: AppSettings) {
 
   const replay = useCallback((text: string) => {
     const current = settingsRef.current
-    if (!current.voiceExplanationsEnabled || !current.soundEnabled) return
+    if (!isVoiceEnabled(current)) return
     void textToSpeechService.replay(text, current)
   }, [])
 

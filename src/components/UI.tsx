@@ -1,6 +1,8 @@
+import type { ReactNode } from 'react'
 import { APP_NAME, APP_TAGLINE } from '../constants'
 import type { Category, Difficulty } from '../types'
 import { CATEGORY_ICONS, CATEGORY_LABELS, DIFFICULTY_LABELS } from '../types'
+import { percentOf, roundedPercentOf } from '../utils/progress'
 
 interface HeaderProps {
   onHome?: () => void
@@ -44,7 +46,7 @@ interface CategoryCardProps {
 }
 
 export function CategoryCard({ category, count, completed, selected, onSelect }: CategoryCardProps) {
-  const pct = count > 0 ? Math.round((completed / count) * 100) : 0
+  const pct = roundedPercentOf(completed, count)
 
   return (
     <button
@@ -79,11 +81,6 @@ export function DifficultyCard({
   unlockHint,
   onSelect,
 }: DifficultyCardProps) {
-  const remainingHint =
-    unlockHint && unlockHint.includes('-')
-      ? unlockHint
-      : unlockHint
-
   return (
     <button
       type="button"
@@ -95,7 +92,7 @@ export function DifficultyCard({
     >
       <span className="difficulty-label">{DIFFICULTY_LABELS[difficulty]}</span>
       <span className="difficulty-meta">
-        {unlocked ? `${completed}/${count} solved` : remainingHint}
+        {unlocked ? `${completed}/${count} solved` : unlockHint}
       </span>
       {!unlocked && <span className="lock-icon" aria-hidden="true">Locked</span>}
     </button>
@@ -109,7 +106,7 @@ interface ProgressRingProps {
 }
 
 export function ProgressRing({ value, max, label }: ProgressRingProps) {
-  const pct = max > 0 ? (value / max) * 100 : 0
+  const pct = percentOf(value, max)
   const circumference = 2 * Math.PI * 42
   const offset = circumference - (pct / 100) * circumference
 
@@ -132,5 +129,58 @@ export function ProgressRing({ value, max, label }: ProgressRingProps) {
         <small>{label}</small>
       </div>
     </div>
+  )
+}
+
+interface ToggleRowProps {
+  label: string
+  checked: boolean
+  onChange: (checked: boolean) => void
+  disabled?: boolean
+}
+
+export function ToggleRow({ label, checked, onChange, disabled }: ToggleRowProps) {
+  return (
+    <label className="setting-row">
+      <span>{label}</span>
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={(e) => onChange(e.target.checked)}
+        disabled={disabled}
+      />
+    </label>
+  )
+}
+
+interface SelectRowProps {
+  label: string
+  value: string
+  onChange: (value: string) => void
+  ariaLabel: string
+  disabled?: boolean
+  children: ReactNode
+}
+
+export function SelectRow({
+  label,
+  value,
+  onChange,
+  ariaLabel,
+  disabled,
+  children,
+}: SelectRowProps) {
+  return (
+    <label className="setting-row setting-select">
+      <span>{label}</span>
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        disabled={disabled}
+        aria-label={ariaLabel}
+      >
+        {children}
+      </select>
+    </label>
   )
 }

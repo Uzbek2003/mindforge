@@ -3,6 +3,13 @@ import type { Difficulty, GameProgress, LastSession } from '../types'
 import { ALL_PUZZLES } from '../data'
 import { UNLOCK_THRESHOLDS } from '../types'
 import { STORAGE_KEYS } from '../constants'
+import { countCompleted } from '../utils/progress'
+import {
+  readJson,
+  readMergedJsonWithLegacyKey,
+  writeJson,
+  writeJsonOrRemove,
+} from '../utils/storage'
 
 const defaultProgress: GameProgress = {
   completed: [],
@@ -12,49 +19,19 @@ const defaultProgress: GameProgress = {
 }
 
 function loadProgress(): GameProgress {
-  try {
-    const raw =
-      localStorage.getItem(STORAGE_KEYS.progress) ??
-      localStorage.getItem(STORAGE_KEYS.progressLegacy)
-    if (!raw) return { ...defaultProgress }
-    const parsed = { ...defaultProgress, ...JSON.parse(raw) }
-    if (!localStorage.getItem(STORAGE_KEYS.progress)) {
-      localStorage.setItem(STORAGE_KEYS.progress, JSON.stringify(parsed))
-    }
-    return parsed
-  } catch {
-    return { ...defaultProgress }
-  }
-}
-
-function saveProgress(progress: GameProgress) {
-  localStorage.setItem(STORAGE_KEYS.progress, JSON.stringify(progress))
+  return readMergedJsonWithLegacyKey(
+    STORAGE_KEYS.progress,
+    STORAGE_KEYS.progressLegacy,
+    defaultProgress,
+  )
 }
 
 function loadLastSession(): LastSession | null {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEYS.lastSession)
-    return raw ? JSON.parse(raw) : null
-  } catch {
-    return null
-  }
-}
-
-function saveLastSession(session: LastSession | null) {
-  if (session) {
-    localStorage.setItem(STORAGE_KEYS.lastSession, JSON.stringify(session))
-  } else {
-    localStorage.removeItem(STORAGE_KEYS.lastSession)
-  }
+  return readJson<LastSession | null>(STORAGE_KEYS.lastSession, null)
 }
 
 function loadReported(): number[] {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEYS.reportedQuestions)
-    return raw ? JSON.parse(raw) : []
-  } catch {
-    return []
-  }
+  return readJson<number[]>(STORAGE_KEYS.reportedQuestions, [])
 }
 
 export function useProgress() {
@@ -63,15 +40,15 @@ export function useProgress() {
   const [reportedQuestions, setReportedQuestions] = useState<number[]>(loadReported)
 
   useEffect(() => {
-    saveProgress(progress)
+    writeJson(STORAGE_KEYS.progress, progress)
   }, [progress])
 
   useEffect(() => {
-    saveLastSession(lastSession)
+    writeJsonOrRemove(STORAGE_KEYS.lastSession, lastSession)
   }, [lastSession])
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.reportedQuestions, JSON.stringify(reportedQuestions))
+    writeJson(STORAGE_KEYS.reportedQuestions, reportedQuestions)
   }, [reportedQuestions])
 
   const completePuzzle = useCallback((puzzleId: number, correct: boolean) => {
@@ -149,13 +126,8 @@ export function useProgress() {
     })
   }, [])
 
-  const easyCompleted = progress.completed.filter(
-    (id) => ALL_PUZZLES.find((p) => p.id === id)?.difficulty === 'easy',
-  ).length
-
-  const mediumCompleted = progress.completed.filter(
-    (id) => ALL_PUZZLES.find((p) => p.id === id)?.difficulty === 'medium',
-  ).length
+  const easyCompleted = countCompleted(progress.completed, { difficulty: 'easy' })
+  const mediumCompleted = countCompleted(progress.completed, { difficulty: 'medium' })
 
   const isDifficultyUnlocked = useCallback(
     (difficulty: Difficulty): boolean => {

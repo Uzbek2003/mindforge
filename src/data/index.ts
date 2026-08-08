@@ -31,9 +31,9 @@ export function getPuzzleById(id: number): Puzzle | undefined {
 }
 
 export function countByDifficulty(difficulty: Difficulty): number {
-  return ALL_PUZZLES.filter((p) => p.difficulty === difficulty).length
+  return getPuzzles({ difficulty }).length
 }
 
 export function countByCategory(category: Category): number {
-  return ALL_PUZZLES.filter((p) => p.category === category).length
+  return getPuzzles({ category }).length
 }

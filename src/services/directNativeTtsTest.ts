@@ -1,7 +1,8 @@
-import { Capacitor } from '@capacitor/core'
 import { TextToSpeech, type TTSOptions } from '@capacitor-community/text-to-speech'
 import type { AppSettings } from '../types'
-import { resolveSpeechPitch, resolveSpeechRate, resolveSpeechVolume } from '../utils/voiceProsody'
+import { formatError } from '../utils/errors'
+import { isNativeTtsPath } from '../utils/platform'
+import { buildNativeTtsOptions } from './ttsOptions'
 
 /** Base phrase for the manual native plugin test. Rate/pitch/volume come from Settings. */
 export const DIRECT_TTS_TEST_BASE = {
@@ -27,28 +28,15 @@ export function isDirectNativeTestRunning() {
 export function buildDirectNativeSpeakOptions(
   settings: Pick<AppSettings, 'voiceSpeed' | 'voicePitch' | 'voiceVolume'>,
 ): TTSOptions {
-  const options: TTSOptions = {
+  return buildNativeTtsOptions({
     text: DIRECT_TTS_TEST_BASE.text,
     lang: DIRECT_TTS_TEST_BASE.lang,
-    rate: resolveSpeechRate(settings.voiceSpeed),
-    pitch: resolveSpeechPitch(settings.voicePitch),
-    volume: resolveSpeechVolume(settings.voiceVolume),
-  }
-  if (Capacitor.getPlatform() === 'ios') {
-    options.category = 'ambient'
-  }
-  return options
+    settings,
+  })
 }
 
-function formatError(error: unknown): string {
-  if (error instanceof Error) {
-    return `${error.name}: ${error.message}${error.stack ? `\n${error.stack}` : ''}`
-  }
-  try {
-    return JSON.stringify(error, null, 2)
-  } catch {
-    return String(error)
-  }
+function describeError(error: unknown): string {
+  return formatError(error, { includeStack: true, pretty: true })
 }
 
 function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promise<T> {
@@ -63,14 +51,13 @@ function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promi
 async function executeDirectNativeTtsTest(
   settings: Pick<AppSettings, 'voiceSpeed' | 'voicePitch' | 'voiceVolume'>,
 ): Promise<DirectTtsTestResult> {
-  const platform = Capacitor.getPlatform()
   const result: DirectTtsTestResult = {
     success: false,
     error: null,
     timedOut: false,
   }
 
-  if (platform !== 'android' && platform !== 'ios') {
+  if (!isNativeTtsPath()) {
     result.error = 'Native TTS test requires Capacitor.getPlatform() === "android" or "ios".'
     return result
   }
@@ -85,7 +72,7 @@ async function executeDirectNativeTtsTest(
     )
     result.success = true
   } catch (error) {
-    const message = formatError(error)
+    const message = describeError(error)
     console.error('Native TTS failed', error)
     result.error = message
     result.timedOut = message.includes('timed out')
@@ -112,7 +99,7 @@ export function startDirectNativeTtsTest(
     .catch((error) => {
       onComplete({
         success: false,
-        error: formatError(error),
+        error: describeError(error),
         timedOut: false,
       })
     })
@@ -125,7 +112,7 @@ export function startDirectNativeTtsTest(
 
 /** Manual stop only — fire-and-forget, never awaited by lifecycle code. */
 export function requestDirectNativeTtsStop(): void {
-  if (Capacitor.getPlatform() !== 'android' && Capacitor.getPlatform() !== 'ios') return
+  if (!isNativeTtsPath()) return
   void TextToSpeech.stop().catch((error) => {
     console.error('Native TTS stop failed', error)
   })

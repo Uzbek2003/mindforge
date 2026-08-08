@@ -1,23 +1,7 @@
 import type { Puzzle } from '../types'
+import { puzzleFactory } from './createPuzzle'
 
-const p = (
-  id: number,
-  difficulty: Puzzle['difficulty'],
-  question: string,
-  options: Puzzle['options'],
-  correctIndex: Puzzle['correctIndex'],
-  hint: string,
-  explanation: string,
-): Puzzle => ({
-  id,
-  category: 'math',
-  difficulty,
-  question,
-  options,
-  correctIndex,
-  hint,
-  explanation,
-})
+const p = puzzleFactory('math')
 
 export const mathPuzzles: Puzzle[] = [
   p(
