@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Capacitor } from '@capacitor/core'
-import { APP_VERSION, SUPPORT_EMAIL } from '../constants'
+import { APP_NAME, APP_VERSION, SUPPORT_EMAIL } from '../constants'
 import type { AppSettings, VoicePersona } from '../types'
 import {
   isDirectNativeTestRunning,
@@ -140,7 +140,8 @@ export function SettingsScreen({
   const handleImport = async () => {
     const result = await onImportProgress()
     if (result === 'success') window.alert('Progress imported successfully.')
-    if (result === 'error') window.alert('Could not import that file. Please choose a valid QuizNova export.')
+    if (result === 'error')
+      window.alert(`Could not import that file. Please choose a valid ${APP_NAME} export.`)
   }
 
   return (
@@ -186,7 +187,7 @@ export function SettingsScreen({
       <section className="panel">
         <h3>Voice explanations</h3>
         <p className="setting-description">
-          Optional spoken questions and explanations. Choose a QuizNova guide persona, or keep the
+          Optional spoken questions and explanations. Choose a {APP_NAME} guide persona, or keep the
           system default. Written explanations always stay visible.
         </p>
 

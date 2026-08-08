@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { APP_NAME } from '../constants'
 import type { Category, Difficulty, LastSession, SessionMode } from '../types'
 import { ALL_PUZZLES, getPuzzles } from '../data'
 import { SESSION_MODE_CONFIG, UNLOCK_THRESHOLDS, DIFFICULTY_LABELS } from '../types'
@@ -99,7 +100,7 @@ export function HomeScreen({
 
       <section className="home-hero">
         <p className="home-eyebrow">Your learning journey</p>
-        <h2 className="home-title">Explore the worlds of QuizNova</h2>
+        <h2 className="home-title">Explore the worlds of {APP_NAME}</h2>
         <p className="home-subtitle">
           Premium educational adventures across math, science, history, and coding — free, ad-free,
           and ready offline.

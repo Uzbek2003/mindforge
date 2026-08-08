@@ -1,3 +1,4 @@
+import { APP_NAME } from '../constants'
 import type { VoicePersona, VoicePitch, VoiceSpeed } from '../types'
 
 export interface VoicePersonaMeta {
@@ -14,7 +15,7 @@ export const VOICE_PERSONA_OPTIONS: VoicePersonaMeta[] = [
     id: 'night-guardian',
     label: 'Night Guardian',
     subtitle: 'Deep mentor-style spoken explanations',
-    description: 'Calm mentor tone with slower, lower delivery. A QuizNova character guide.',
+    description: `Calm mentor tone with slower, lower delivery. A ${APP_NAME} character guide.`,
     recommendedSpeed: 'slow',
     recommendedPitch: 'low',
   },
@@ -22,8 +23,7 @@ export const VOICE_PERSONA_OPTIONS: VoicePersonaMeta[] = [
     id: 'president',
     label: 'The President',
     subtitle: 'Bold, energetic quiz-coach explanations',
-    description:
-      'Confident, slightly humorous coach tone with faster, clear delivery. A fictional QuizNova character — not a real person.',
+    description: `Confident, slightly humorous coach tone with faster, clear delivery. A fictional ${APP_NAME} character — not a real person.`,
     recommendedSpeed: 'fast',
     recommendedPitch: 'normal',
   },

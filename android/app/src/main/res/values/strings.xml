@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">QuizNova</string>
-    <string name="title_activity_main">QuizNova</string>
-    <string name="package_name">com.uzbek2003.quiznova</string>
-    <string name="custom_url_scheme">com.uzbek2003.quiznova</string>
+    <string name="app_name">MindForge</string>
+    <string name="title_activity_main">MindForge</string>
+    <string name="package_name">com.shakhzodrafikov.mindforge</string>
+    <string name="custom_url_scheme">com.shakhzodrafikov.mindforge</string>
 </resources>

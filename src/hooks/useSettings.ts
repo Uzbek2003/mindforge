@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useState } from 'react'
 import { DEFAULT_SETTINGS, type AppSettings } from '../types'
 import { STORAGE_KEYS } from '../constants'
+import { readStorageKey } from '../utils/storageMigration'
 import { normalizeVoicePersona } from '../utils/voicePersona'
 import { normalizeVoicePitch } from '../utils/voiceProsody'
 
 function loadSettings(): AppSettings {
   try {
-    const raw = localStorage.getItem(STORAGE_KEYS.settings)
+    const raw = readStorageKey('settings')
     if (!raw) return { ...DEFAULT_SETTINGS }
     const parsed = { ...DEFAULT_SETTINGS, ...JSON.parse(raw) } as AppSettings
     parsed.voicePitch = normalizeVoicePitch(parsed.voicePitch as string)

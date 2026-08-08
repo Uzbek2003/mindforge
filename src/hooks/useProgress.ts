@@ -2,7 +2,9 @@ import { useCallback, useEffect, useState } from 'react'
 import type { Difficulty, GameProgress, LastSession } from '../types'
 import { ALL_PUZZLES } from '../data'
 import { UNLOCK_THRESHOLDS } from '../types'
-import { STORAGE_KEYS } from '../constants'
+import { PROGRESS_EXPORT_FILENAME, STORAGE_KEYS } from '../constants'
+import { parseProgressExport } from '../utils/progressExport'
+import { readStorageKey } from '../utils/storageMigration'
 
 const defaultProgress: GameProgress = {
   completed: [],
@@ -13,9 +15,7 @@ const defaultProgress: GameProgress = {
 
 function loadProgress(): GameProgress {
   try {
-    const raw =
-      localStorage.getItem(STORAGE_KEYS.progress) ??
-      localStorage.getItem(STORAGE_KEYS.progressLegacy)
+    const raw = readStorageKey('progress')
     if (!raw) return { ...defaultProgress }
     const parsed = { ...defaultProgress, ...JSON.parse(raw) }
     if (!localStorage.getItem(STORAGE_KEYS.progress)) {
@@ -33,7 +33,7 @@ function saveProgress(progress: GameProgress) {
 
 function loadLastSession(): LastSession | null {
   try {
-    const raw = localStorage.getItem(STORAGE_KEYS.lastSession)
+    const raw = readStorageKey('lastSession')
     return raw ? JSON.parse(raw) : null
   } catch {
     return null
@@ -50,7 +50,7 @@ function saveLastSession(session: LastSession | null) {
 
 function loadReported(): number[] {
   try {
-    const raw = localStorage.getItem(STORAGE_KEYS.reportedQuestions)
+    const raw = readStorageKey('reportedQuestions')
     return raw ? JSON.parse(raw) : []
   } catch {
     return []
@@ -113,7 +113,7 @@ export function useProgress() {
     const url = URL.createObjectURL(blob)
     const link = document.createElement('a')
     link.href = url
-    link.download = 'quiznova-progress.json'
+    link.download = PROGRESS_EXPORT_FILENAME
     link.click()
     URL.revokeObjectURL(url)
   }, [progress, reportedQuestions])
@@ -131,14 +131,14 @@ export function useProgress() {
         }
         try {
           const text = await file.text()
-          const data = JSON.parse(text)
-          if (!data.progress?.completed) {
+          const parsed = parseProgressExport(JSON.parse(text))
+          if (!parsed) {
             resolve('error')
             return
           }
-          setProgress({ ...defaultProgress, ...data.progress })
-          if (Array.isArray(data.reportedQuestions)) {
-            setReportedQuestions(data.reportedQuestions)
+          setProgress(parsed.progress)
+          if (parsed.reportedQuestions) {
+            setReportedQuestions(parsed.reportedQuestions)
           }
           resolve('success')
         } catch {

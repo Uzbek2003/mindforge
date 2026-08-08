@@ -5,7 +5,7 @@ import { resolveSpeechPitch, resolveSpeechRate, resolveSpeechVolume } from '../u
 
 /** Base phrase for the manual native plugin test. Rate/pitch/volume come from Settings. */
 export const DIRECT_TTS_TEST_BASE = {
-  text: 'Hello. This is the QuizNova native voice test.',
+  text: 'Hello. This is the MindForge native voice test.',
   lang: 'en',
   volume: 1.0,
 } as const

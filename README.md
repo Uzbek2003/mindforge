@@ -1,4 +1,4 @@
-# QuizNova
+# MindForge
 
 Educational puzzle and trivia app for general audiences — 100 free questions across Math, Science, History, and Computer Science.
 
@@ -8,9 +8,10 @@ Educational puzzle and trivia app for general audiences — 100 free questions a
 
 - 100 puzzles in 4 categories with Easy / Medium / Hard progression
 - Session modes: Quick (5), Standard (10), Challenge (20), Full, Endless, Daily Challenge
-- Results screen with accuracy, streak, time, retry incorrect, share score
+- Number Kingdom story adventure prototype with XP and boss battles
+- Results screen with accuracy, streak, time, retry incorrect, Review Mistakes, share score
 - Hints, explanations, report-question button
-- Settings: sound, vibration, large text, reduce animations, export/import progress
+- Settings: sound, vibration, large text, reduce animations, voice personas, export/import progress
 - In-app Privacy Policy, Terms, About, Contact
 - Offline-capable mobile build via Capacitor
 - No ads, no account required
@@ -36,7 +37,7 @@ npm run cap:sync          # build web + sync to android/
 npm run cap:android       # open Android Studio
 ```
 
-Package ID: `com.uzbek2003.quiznova`
+Package ID: `com.shakhzodrafikov.mindforge`
 
 ## Deploy web version
 
@@ -57,7 +58,8 @@ Privacy policy URL (after deploy): `https://your-domain.com/privacy`
 
 | Item | Status |
 |------|--------|
-| App rebrand to QuizNova | Done |
+| App rebrand to MindForge | Done |
+| Android application ID `com.shakhzodrafikov.mindforge` | Done |
 | Remove age 7–35 marketing | Done |
 | Privacy policy (in-app + web) | Done |
 | Terms, About, Contact | Done |
@@ -68,11 +70,12 @@ Privacy policy URL (after deploy): `https://your-domain.com/privacy`
 | Report incorrect question | Done |
 | Android back button | Done |
 | Haptics + sound toggles | Done |
-| Manual review of all 100 questions | **You must do this** |
+| Manual review of all 100 questions | Done |
+| Real-device Android QA (Samsung) | Done |
+| Support email configured | Done — shakhzodrafikov915@gmail.com |
 | Custom app icon + splash (store quality) | Partial — basic icon only |
 | Play Store / App Store screenshots | **Not done** |
-| Real-device Android QA | **You must test** |
-| Support email configured | Done — shakhzodrafikov915@gmail.com |
+| Release signing keystore | **Not done** |
 
 ## Support
 
