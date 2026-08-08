@@ -52,7 +52,7 @@ Deploy the `dist/` folder to Vercel, Netlify, or GitHub Pages. Public legal URLs
 npm run deploy:vercel
 ```
 
-Privacy policy URL (after deploy): `https://your-domain.com/privacy`
+Privacy policy URL (after deploy): `https://mindforge-beta-five.vercel.app/privacy`
 
 ## Pre-publish checklist
 

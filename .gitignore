@@ -23,8 +23,12 @@ dist-ssr
 *.sln
 *.sw?
 
-# Signing keys
+# Signing keys and secrets (never commit upload/release credentials)
 *.jks
 *.keystore
 key.properties
 android/key.properties
+keystore.properties
+signing.properties
+*.password
+*signing*password*
