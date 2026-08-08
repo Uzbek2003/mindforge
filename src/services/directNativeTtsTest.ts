@@ -2,6 +2,7 @@ import { Capacitor } from '@capacitor/core'
 import { TextToSpeech, type TTSOptions } from '@capacitor-community/text-to-speech'
 import type { AppSettings } from '../types'
 import { resolveSpeechPitch, resolveSpeechRate, resolveSpeechVolume } from '../utils/voiceProsody'
+import { formatError, reportError } from '../utils/errors'
 
 /** Base phrase for the manual native plugin test. Rate/pitch/volume come from Settings. */
 export const DIRECT_TTS_TEST_BASE = {
@@ -40,17 +41,6 @@ export function buildDirectNativeSpeakOptions(
   return options
 }
 
-function formatError(error: unknown): string {
-  if (error instanceof Error) {
-    return `${error.name}: ${error.message}${error.stack ? `\n${error.stack}` : ''}`
-  }
-  try {
-    return JSON.stringify(error, null, 2)
-  } catch {
-    return String(error)
-  }
-}
-
 function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promise<T> {
   return Promise.race([
     promise,
@@ -86,7 +76,7 @@ async function executeDirectNativeTtsTest(
     result.success = true
   } catch (error) {
     const message = formatError(error)
-    console.error('Native TTS failed', error)
+    reportError('native TTS test failed', error)
     result.error = message
     result.timedOut = message.includes('timed out')
   }
@@ -109,7 +99,8 @@ export function startDirectNativeTtsTest(
 
   void executeDirectNativeTtsTest(settings)
     .then(onComplete)
-    .catch((error) => {
+    .catch((error: unknown) => {
+      reportError('native TTS test crashed', error)
       onComplete({
         success: false,
         error: formatError(error),
@@ -126,7 +117,7 @@ export function startDirectNativeTtsTest(
 /** Manual stop only — fire-and-forget, never awaited by lifecycle code. */
 export function requestDirectNativeTtsStop(): void {
   if (Capacitor.getPlatform() !== 'android' && Capacitor.getPlatform() !== 'ios') return
-  void TextToSpeech.stop().catch((error) => {
-    console.error('Native TTS stop failed', error)
+  void TextToSpeech.stop().catch((error: unknown) => {
+    reportError('native TTS test stop failed', error)
   })
 }

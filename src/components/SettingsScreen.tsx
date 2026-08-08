@@ -8,6 +8,8 @@ import {
   startDirectNativeTtsTest,
 } from '../services/directNativeTtsTest'
 import { getVoices, textToSpeechService, type VoiceOption } from '../services/textToSpeech'
+import type { ExportProgressResult, ImportProgressResult } from '../hooks/useProgress'
+import { fireAndForget, reportError } from '../utils/errors'
 import { TEST_VOICE_PHRASE } from '../utils/speechText'
 import { normalizeVoicePitch, resolveSpeechVolume } from '../utils/voiceProsody'
 import { Header } from './UI'
@@ -16,8 +18,8 @@ interface SettingsScreenProps {
   settings: AppSettings
   onUpdate: <K extends keyof AppSettings>(key: K, value: AppSettings[K]) => void
   onResetProgress: () => void
-  onExportProgress: () => void
-  onImportProgress: () => Promise<'success' | 'cancelled' | 'error'>
+  onExportProgress: () => ExportProgressResult
+  onImportProgress: () => Promise<ImportProgressResult>
   onOpenLegal: (page: 'privacy' | 'terms' | 'about' | 'contact') => void
   onBack: () => void
 }
@@ -39,11 +41,14 @@ export function SettingsScreen({
   const isNativePlatform = Capacitor.getPlatform() === 'android' || Capacitor.getPlatform() === 'ios'
 
   useEffect(() => {
-    void getVoices().then(setVoices)
+    fireAndForget(
+      getVoices().then(setVoices),
+      'loading the voice list',
+    )
   }, [])
 
   useEffect(() => {
-    void textToSpeechService.initializeCatalog(settings)
+    fireAndForget(textToSpeechService.initializeCatalog(settings), 'initializing the voice catalog')
   }, [settings.voiceId, settings.voiceSpeed, settings.voicePitch, settings.voiceVolume])
 
   useEffect(() => {
@@ -59,7 +64,7 @@ export function SettingsScreen({
       : null)
 
   const handleVoiceChange = (voiceId: string | null) => {
-    void textToSpeechService.stop()
+    fireAndForget(textToSpeechService.stop(), 'stopping speech before a voice change')
     onUpdate('voiceId', voiceId)
   }
 
@@ -67,6 +72,9 @@ export function SettingsScreen({
     setTesting(true)
     try {
       await textToSpeechService.testVoice(settings)
+    } catch (error) {
+      reportError('voice test failed', error)
+      window.alert('The voice test could not be played. Check your device text-to-speech settings.')
     } finally {
       setTesting(false)
     }
@@ -79,8 +87,11 @@ export function SettingsScreen({
 
     setDirectTesting(true)
 
-    const started = startDirectNativeTtsTest(() => {
+    const started = startDirectNativeTtsTest((result) => {
       setDirectTesting(false)
+      if (!result.success) {
+        window.alert(`Native TTS test failed: ${result.error ?? 'unknown error'}`)
+      }
     }, settings)
 
     if (!started) {
@@ -103,10 +114,26 @@ export function SettingsScreen({
     }
   }
 
-  const handleImport = async () => {
-    const result = await onImportProgress()
-    if (result === 'success') window.alert('Progress imported successfully.')
-    if (result === 'error') window.alert('Could not import that file. Please choose a valid QuizNova export.')
+  const handleImport = () => {
+    fireAndForget(
+      onImportProgress().then((result) => {
+        if (result.status === 'success') {
+          window.alert('Progress imported successfully.')
+        } else if (result.status === 'error') {
+          window.alert(
+            `Could not import that file. Please choose a valid QuizNova export.\n\n${result.reason}`,
+          )
+        }
+      }),
+      'importing progress',
+    )
+  }
+
+  const handleExport = () => {
+    const result = onExportProgress()
+    if (!result.ok) {
+      window.alert(`Could not export your progress.\n\n${result.reason}`)
+    }
   }
 
   return (
@@ -301,7 +328,7 @@ export function SettingsScreen({
 
       <section className="panel">
         <h3>Progress</h3>
-        <button type="button" className="btn btn-ghost setting-btn" onClick={onExportProgress}>
+        <button type="button" className="btn btn-ghost setting-btn" onClick={handleExport}>
           Export progress
         </button>
         <button type="button" className="btn btn-ghost setting-btn" onClick={handleImport}>

@@ -1,10 +1,23 @@
+import { reportError } from './errors'
+
 let audioCtx: AudioContext | null = null
+let audioUnavailable = false
 
 function getContext(): AudioContext | null {
-  if (typeof window === 'undefined') return null
+  if (typeof window === 'undefined' || audioUnavailable) return null
   if (!audioCtx) {
     const Ctx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext
-    if (Ctx) audioCtx = new Ctx()
+    if (!Ctx) {
+      audioUnavailable = true
+      return null
+    }
+    try {
+      audioCtx = new Ctx()
+    } catch (error) {
+      audioUnavailable = true
+      reportError('audio context unavailable — sound effects disabled', error)
+      return null
+    }
   }
   return audioCtx
 }
@@ -12,15 +25,20 @@ function getContext(): AudioContext | null {
 function tone(frequency: number, duration: number, volume = 0.08) {
   const ctx = getContext()
   if (!ctx) return
-  const oscillator = ctx.createOscillator()
-  const gain = ctx.createGain()
-  oscillator.type = 'sine'
-  oscillator.frequency.value = frequency
-  gain.gain.value = volume
-  oscillator.connect(gain)
-  gain.connect(ctx.destination)
-  oscillator.start()
-  oscillator.stop(ctx.currentTime + duration)
+  try {
+    const oscillator = ctx.createOscillator()
+    const gain = ctx.createGain()
+    oscillator.type = 'sine'
+    oscillator.frequency.value = frequency
+    gain.gain.value = volume
+    oscillator.connect(gain)
+    gain.connect(ctx.destination)
+    oscillator.start()
+    oscillator.stop(ctx.currentTime + duration)
+  } catch (error) {
+    // A failed sound effect must not interrupt answering a question.
+    reportError('sound effect failed', error)
+  }
 }
 
 export function playCorrectSound(enabled: boolean) {

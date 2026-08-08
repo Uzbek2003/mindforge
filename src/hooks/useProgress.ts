@@ -3,6 +3,16 @@ import type { Difficulty, GameProgress, LastSession } from '../types'
 import { ALL_PUZZLES } from '../data'
 import { UNLOCK_THRESHOLDS } from '../types'
 import { STORAGE_KEYS } from '../constants'
+import { reportError } from '../utils/errors'
+import { hasStoredValue, readStoredJson, removeStoredItem, writeStoredJson } from '../utils/storage'
+import { parseProgressExport } from '../utils/progressImport'
+
+export type ExportProgressResult = { ok: true } | { ok: false; reason: string }
+
+export type ImportProgressResult =
+  | { status: 'success' }
+  | { status: 'cancelled' }
+  | { status: 'error'; reason: string }
 
 const defaultProgress: GameProgress = {
   completed: [],
@@ -12,49 +22,36 @@ const defaultProgress: GameProgress = {
 }
 
 function loadProgress(): GameProgress {
-  try {
-    const raw =
-      localStorage.getItem(STORAGE_KEYS.progress) ??
-      localStorage.getItem(STORAGE_KEYS.progressLegacy)
-    if (!raw) return { ...defaultProgress }
-    const parsed = { ...defaultProgress, ...JSON.parse(raw) }
-    if (!localStorage.getItem(STORAGE_KEYS.progress)) {
-      localStorage.setItem(STORAGE_KEYS.progress, JSON.stringify(parsed))
-    }
-    return parsed
-  } catch {
-    return { ...defaultProgress }
+  const stored =
+    readStoredJson<Partial<GameProgress>>(STORAGE_KEYS.progress) ??
+    readStoredJson<Partial<GameProgress>>(STORAGE_KEYS.progressLegacy)
+  if (!stored) return { ...defaultProgress }
+
+  const parsed = { ...defaultProgress, ...stored }
+  if (!hasStoredValue(STORAGE_KEYS.progress)) {
+    writeStoredJson(STORAGE_KEYS.progress, parsed)
   }
+  return parsed
 }
 
 function saveProgress(progress: GameProgress) {
-  localStorage.setItem(STORAGE_KEYS.progress, JSON.stringify(progress))
+  writeStoredJson(STORAGE_KEYS.progress, progress)
 }
 
 function loadLastSession(): LastSession | null {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEYS.lastSession)
-    return raw ? JSON.parse(raw) : null
-  } catch {
-    return null
-  }
+  return readStoredJson<LastSession>(STORAGE_KEYS.lastSession)
 }
 
 function saveLastSession(session: LastSession | null) {
   if (session) {
-    localStorage.setItem(STORAGE_KEYS.lastSession, JSON.stringify(session))
+    writeStoredJson(STORAGE_KEYS.lastSession, session)
   } else {
-    localStorage.removeItem(STORAGE_KEYS.lastSession)
+    removeStoredItem(STORAGE_KEYS.lastSession)
   }
 }
 
 function loadReported(): number[] {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEYS.reportedQuestions)
-    return raw ? JSON.parse(raw) : []
-  } catch {
-    return []
-  }
+  return readStoredJson<number[]>(STORAGE_KEYS.reportedQuestions) ?? []
 }
 
 export function useProgress() {
@@ -71,7 +68,7 @@ export function useProgress() {
   }, [lastSession])
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.reportedQuestions, JSON.stringify(reportedQuestions))
+    writeStoredJson(STORAGE_KEYS.reportedQuestions, reportedQuestions)
   }, [reportedQuestions])
 
   const completePuzzle = useCallback((puzzleId: number, correct: boolean) => {
@@ -102,48 +99,62 @@ export function useProgress() {
     setReportedQuestions((prev) => (prev.includes(puzzleId) ? prev : [...prev, puzzleId]))
   }, [])
 
-  const exportProgress = useCallback(() => {
+  const exportProgress = useCallback((): ExportProgressResult => {
     const payload = {
       version: 1,
       exportedAt: new Date().toISOString(),
       progress,
       reportedQuestions,
     }
-    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' })
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.href = url
-    link.download = 'quiznova-progress.json'
-    link.click()
-    URL.revokeObjectURL(url)
+    let url: string | null = null
+    try {
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' })
+      url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = 'quiznova-progress.json'
+      link.click()
+      return { ok: true }
+    } catch (error) {
+      reportError('progress export failed', error)
+      return { ok: false, reason: error instanceof Error ? error.message : String(error) }
+    } finally {
+      if (url) URL.revokeObjectURL(url)
+    }
   }, [progress, reportedQuestions])
 
   const importProgress = useCallback(async () => {
-    return new Promise<'success' | 'cancelled' | 'error'>((resolve) => {
+    return new Promise<ImportProgressResult>((resolve) => {
       const input = document.createElement('input')
       input.type = 'file'
       input.accept = 'application/json,.json'
-      input.onchange = async () => {
+      input.onchange = () => {
         const file = input.files?.[0]
         if (!file) {
-          resolve('cancelled')
+          resolve({ status: 'cancelled' })
           return
         }
-        try {
-          const text = await file.text()
-          const data = JSON.parse(text)
-          if (!data.progress?.completed) {
-            resolve('error')
-            return
-          }
-          setProgress({ ...defaultProgress, ...data.progress })
-          if (Array.isArray(data.reportedQuestions)) {
-            setReportedQuestions(data.reportedQuestions)
-          }
-          resolve('success')
-        } catch {
-          resolve('error')
-        }
+
+        file
+          .text()
+          .then((text) => {
+            const parsed = parseProgressExport(text)
+            if (!parsed.ok) {
+              reportError('progress import rejected', new Error(parsed.reason))
+              resolve({ status: 'error', reason: parsed.reason })
+              return
+            }
+            setProgress(parsed.value.progress)
+            setReportedQuestions(parsed.value.reportedQuestions)
+            resolve({ status: 'success' })
+          })
+          .catch((error: unknown) => {
+            reportError('progress import failed', error)
+            resolve({
+              status: 'error',
+              reason: error instanceof Error ? error.message : 'The file could not be read.',
+            })
+          })
       }
       input.click()
     })

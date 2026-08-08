@@ -7,6 +7,7 @@ import { hapticError, hapticSuccess } from '../utils/haptics'
 import { playCorrectSound, playWrongSound } from '../utils/sounds'
 import { buildQuestionReportEmail } from '../utils/report'
 import { buildExplanationSpeech, buildQuestionSpeech } from '../utils/explanationSpeech'
+import { fireAndForget } from '../utils/errors'
 import { useVoiceExplanation } from '../hooks/useVoiceExplanation'
 import { VoiceExplanationPanel } from './VoiceExplanationPanel'
 import { Header } from './UI'
@@ -162,17 +163,17 @@ export function PuzzleGame({
     [onComplete, settings.soundEnabled, settings.vibrationEnabled],
   )
 
-  const handleSelect = async (optionIndex: number) => {
+  const handleSelect = (optionIndex: number) => {
     if (revealed || !puzzle || answeringRef.current) return
     answeringRef.current = true
     const correct = optionIndex === puzzle.correctIndex
-    await revealAnswer(puzzle, optionIndex, correct, false)
+    fireAndForget(revealAnswer(puzzle, optionIndex, correct, false), 'revealing the answer')
   }
 
-  const handleTimeout = useCallback(async () => {
+  const handleTimeout = useCallback(() => {
     if (revealed || !puzzle || answeringRef.current) return
     answeringRef.current = true
-    await revealAnswer(puzzle, null, false, true)
+    fireAndForget(revealAnswer(puzzle, null, false, true), 'revealing the answer after a timeout')
   }, [puzzle, revealAnswer, revealed])
 
   useEffect(() => {
