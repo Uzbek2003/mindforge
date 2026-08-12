@@ -763,10 +763,33 @@
   font-size: 0.95rem;
   text-align: left;
   transition: border-color 0.15s, background 0.15s;
+  cursor: pointer;
 }
 
-.option-btn:hover:not(:disabled) {
+.option-btn:has(.option-radio-input:disabled) {
+  cursor: default;
+  opacity: 1;
+}
+
+.option-radio-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.option-btn:hover:not(:has(.option-radio-input:disabled)) {
   border-color: var(--accent);
+}
+
+.option-btn:focus-within {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
 .option-btn.selected {
@@ -874,6 +897,24 @@
 
 .setting-row:last-child {
   border-bottom: none;
+}
+
+.setting-row > span {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.setting-sub {
+  font-size: 0.78rem;
+  font-weight: 400;
+  color: var(--text-muted);
+  line-height: 1.35;
+}
+
+.setting-row input:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
 }
 
 .setting-btn {

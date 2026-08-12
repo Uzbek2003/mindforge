@@ -7,6 +7,13 @@ export const SUPPORT_EMAIL = 'shakhzodrafikov915@gmail.com'
 export const APP_VERSION = '1.0.0'
 export const PROGRESS_EXPORT_FILENAME = 'mindforge-progress.json'
 
+/** Canonical public origin used for Open Graph / Twitter / canonical link tags. */
+export const SITE_URL = 'https://mindforge-beta-five.vercel.app'
+/** Absolute social-preview image (Play/PWA 512 icon). */
+export const OG_IMAGE_URL = `${SITE_URL}/icon-512.png`
+/** Absolute canonical homepage URL. */
+export const CANONICAL_URL = `${SITE_URL}/`
+
 /** Current localStorage keys (MindForge). */
 export const STORAGE_KEYS = {
   progress: 'mindforge-progress',

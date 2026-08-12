@@ -182,6 +182,33 @@ export function SettingsScreen({
             onChange={(e) => onUpdate('reduceAnimations', e.target.checked)}
           />
         </label>
+        <label className="setting-row">
+          <span>
+            Untimed Mode
+            <span className="setting-sub">No countdown in classic or story questions</span>
+          </span>
+          <input
+            type="checkbox"
+            checked={settings.untimedMode}
+            onChange={(e) => onUpdate('untimedMode', e.target.checked)}
+          />
+        </label>
+        <label className="setting-row">
+          <span>
+            Extended Time
+            <span className="setting-sub">
+              {settings.untimedMode
+                ? 'Paused while Untimed Mode is on'
+                : '1.5× the standard per-question limit'}
+            </span>
+          </span>
+          <input
+            type="checkbox"
+            checked={settings.extendedTime}
+            disabled={settings.untimedMode}
+            onChange={(e) => onUpdate('extendedTime', e.target.checked)}
+          />
+        </label>
       </section>
 
       <section className="panel">

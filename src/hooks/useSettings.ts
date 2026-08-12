@@ -12,6 +12,8 @@ function loadSettings(): AppSettings {
     const parsed = { ...DEFAULT_SETTINGS, ...JSON.parse(raw) } as AppSettings
     parsed.voicePitch = normalizeVoicePitch(parsed.voicePitch as string)
     parsed.voicePersona = normalizeVoicePersona(parsed.voicePersona as string)
+    parsed.untimedMode = Boolean(parsed.untimedMode)
+    parsed.extendedTime = Boolean(parsed.extendedTime)
     if (parsed.voiceSpeed !== 'slow' && parsed.voiceSpeed !== 'fast') {
       parsed.voiceSpeed = 'normal'
     }

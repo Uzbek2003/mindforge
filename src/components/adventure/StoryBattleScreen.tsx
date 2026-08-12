@@ -1,14 +1,18 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { AppSettings, Puzzle } from '../../types'
 import { getPuzzleById } from '../../data'
-import { DIFFICULTY_TIME_LIMITS } from '../../types'
 import type { AdventureBattleAttempt, AdventureNode } from '../../types/adventure'
 import { resolveStrike, shouldClearNode } from '../../utils/adventureCombat'
 import { hapticError, hapticSuccess } from '../../utils/haptics'
 import { playCorrectSound, playWrongSound } from '../../utils/sounds'
 import { buildExplanationSpeech, buildQuestionSpeech } from '../../utils/explanationSpeech'
+import {
+  resolveQuestionTimeLimit,
+  resolveRetryTimeLimit,
+} from '../../utils/questionTimer'
 import { useVoiceExplanation } from '../../hooks/useVoiceExplanation'
 import { VoiceExplanationPanel } from '../VoiceExplanationPanel'
+import { AnswerOptions } from '../AnswerOptions'
 import { Header } from '../UI'
 
 export interface StoryBattleFinishPayload {
@@ -69,8 +73,11 @@ export function StoryBattleScreen({
   const finishedRef = useRef(false)
 
   const puzzle = puzzles[index]
-  const timeLimit = puzzle ? DIFFICULTY_TIME_LIMITS[puzzle.difficulty] : 60
-  const [timeLeft, setTimeLeft] = useState(timeLimit)
+  const timeLimit = puzzle
+    ? resolveQuestionTimeLimit(puzzle.difficulty, settings)
+    : resolveQuestionTimeLimit('easy', settings)
+  const isUntimed = timeLimit == null
+  const [timeLeft, setTimeLeft] = useState(timeLimit ?? 0)
 
   const voice = useVoiceExplanation(settings)
   const { play: playVoice, stop: stopVoice } = voice
@@ -121,9 +128,12 @@ export function StoryBattleScreen({
       setLastStrikeDamage(0)
       setPhase('answering')
       const nextPuzzle = puzzles[index + 1]
-      setTimeLeft(nextPuzzle ? DIFFICULTY_TIME_LIMITS[nextPuzzle.difficulty] : timeLimit)
+      const nextLimit = nextPuzzle
+        ? resolveQuestionTimeLimit(nextPuzzle.difficulty, settings)
+        : timeLimit
+      setTimeLeft(nextLimit ?? 0)
     },
-    [finishBattle, index, puzzles, timeLimit],
+    [finishBattle, index, puzzles, settings, timeLimit],
   )
 
   const resolveAnswer = useCallback(
@@ -151,7 +161,7 @@ export function StoryBattleScreen({
         setAttempt(2)
         setSelected(null)
         answeringRef.current = false
-        setTimeLeft(Math.max(20, Math.floor(timeLimit * 0.75)))
+        setTimeLeft(resolveRetryTimeLimit(timeLimit) ?? 0)
         return
       }
 
@@ -217,7 +227,7 @@ export function StoryBattleScreen({
 
   useEffect(() => {
     if (phase !== 'answering' && phase !== 'retry') return
-    if (!puzzle) return
+    if (!puzzle || isUntimed || timeLimit == null) return
 
     const timer = window.setInterval(() => {
       setTimeLeft((prev) => {
@@ -231,7 +241,7 @@ export function StoryBattleScreen({
     }, 1000)
 
     return () => window.clearInterval(timer)
-  }, [handleTimeout, phase, puzzle?.id, attempt])
+  }, [handleTimeout, isUntimed, phase, puzzle?.id, attempt, timeLimit])
 
   useEffect(() => {
     if (!puzzle || (phase !== 'answering' && phase !== 'retry')) return
@@ -279,7 +289,7 @@ export function StoryBattleScreen({
     phase === 'resolved'
       ? buildExplanationSpeech(puzzle, selected, Boolean(isCorrect), timedOut)
       : ''
-  const timerPct = (timeLeft / timeLimit) * 100
+  const timerPct = !isUntimed && timeLimit != null ? (timeLeft / timeLimit) * 100 : 0
   const kindLabel =
     node.kind === 'boss' ? 'Final boss' : node.kind === 'enemy' ? 'Encounter' : 'Learning stage'
 
@@ -322,13 +332,20 @@ export function StoryBattleScreen({
             Puzzle {index + 1}/{puzzles.length}
           </span>
           <span className="badge badge-muted">Attempt {attempt}/2</span>
-          {(phase === 'answering' || phase === 'retry') && (
-            <span className={`timer-badge ${timeLeft <= 10 ? 'timer-low' : ''}`}>⏱ {timeLeft}s</span>
-          )}
+          {(phase === 'answering' || phase === 'retry') &&
+            (isUntimed ? (
+              <span className="timer-badge timer-paused" aria-label="Untimed mode">
+                Untimed
+              </span>
+            ) : (
+              <span className={`timer-badge ${timeLeft <= 10 ? 'timer-low' : ''}`}>
+                ⏱ {timeLeft}s
+              </span>
+            ))}
         </div>
       </div>
 
-      {(phase === 'answering' || phase === 'retry') && (
+      {(phase === 'answering' || phase === 'retry') && !isUntimed && (
         <div className="timer-bar" aria-hidden="true">
           <div className="timer-bar-fill" style={{ width: `${timerPct}%` }} />
         </div>
@@ -345,8 +362,16 @@ export function StoryBattleScreen({
           </div>
         )}
 
-        <div className="options-grid" role="listbox" aria-labelledby="adventure-question">
-          {puzzle.options.map((option, i) => {
+        <AnswerOptions
+          groupName={`story-q-${puzzle.id}-a${attempt}`}
+          labelledBy="adventure-question"
+          options={puzzle.options}
+          selectedIndex={selected}
+          disabled={phase === 'resolved' || phase === 'finished'}
+          correctIndex={puzzle.correctIndex}
+          revealed={phase === 'resolved'}
+          onSelect={handleSelect}
+          getOptionClassName={(i) => {
             let className = 'option-btn'
             if (phase === 'resolved' || (phase === 'retry' && selected === i && attempt === 2)) {
               if (phase === 'resolved' && i === puzzle.correctIndex) className += ' correct'
@@ -354,26 +379,9 @@ export function StoryBattleScreen({
             } else if (selected === i && phase !== 'retry') {
               className += ' selected'
             }
-
-            const disabled = phase === 'resolved' || phase === 'finished'
-            return (
-              <button
-                key={`${puzzle.id}-${attempt}-${i}`}
-                type="button"
-                className={className}
-                onClick={() => handleSelect(i)}
-                disabled={disabled}
-                role="option"
-                aria-selected={selected === i}
-              >
-                <span className="option-letter" aria-hidden="true">
-                  {String.fromCharCode(65 + i)}
-                </span>
-                <span className="option-text">{option}</span>
-              </button>
-            )
-          })}
-        </div>
+            return className
+          }}
+        />
 
         {phase === 'resolved' && (
           <div
