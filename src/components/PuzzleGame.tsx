@@ -1,14 +1,16 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { AppSettings, Category, Difficulty, LastSession, Puzzle, SessionAnswer, SessionMode, SessionResult } from '../types'
 import { getPuzzleById } from '../data'
-import { CATEGORY_LABELS, DIFFICULTY_LABELS, DIFFICULTY_TIME_LIMITS, SESSION_MODE_CONFIG } from '../types'
+import { CATEGORY_LABELS, DIFFICULTY_LABELS, SESSION_MODE_CONFIG } from '../types'
 import { buildSessionQueue, buildEndlessExtension, calcSessionStreak } from '../utils/session'
 import { hapticError, hapticSuccess } from '../utils/haptics'
 import { playCorrectSound, playWrongSound } from '../utils/sounds'
 import { buildQuestionReportEmail } from '../utils/report'
 import { buildExplanationSpeech, buildQuestionSpeech } from '../utils/explanationSpeech'
+import { resolveQuestionTimeLimit } from '../utils/questionTimer'
 import { useVoiceExplanation } from '../hooks/useVoiceExplanation'
 import { VoiceExplanationPanel } from './VoiceExplanationPanel'
+import { AnswerOptions } from './AnswerOptions'
 import { Header } from './UI'
 
 interface PuzzleGameProps {
@@ -44,7 +46,8 @@ export function PuzzleGame({
   onReport,
   reportedQuestions,
 }: PuzzleGameProps) {
-  const timeLimit = DIFFICULTY_TIME_LIMITS[difficulty]
+  const timeLimit = resolveQuestionTimeLimit(difficulty, settings)
+  const isUntimed = timeLimit == null
 
   const [puzzleQueue, setPuzzleQueue] = useState<Puzzle[]>(() => {
     if (resumeSession) {
@@ -65,7 +68,7 @@ export function PuzzleGame({
     resumeSession?.sessionAnswers ?? [],
   )
   const [reported, setReported] = useState(false)
-  const [timeLeft, setTimeLeft] = useState(timeLimit)
+  const [timeLeft, setTimeLeft] = useState(timeLimit ?? 0)
   const startedAt = useRef(resumeSession?.startedAt ?? Date.now())
   const answeringRef = useRef(false)
   const voice = useVoiceExplanation(settings)
@@ -176,7 +179,7 @@ export function PuzzleGame({
   }, [puzzle, revealAnswer, revealed])
 
   useEffect(() => {
-    if (revealed || !puzzle) return
+    if (revealed || !puzzle || isUntimed || timeLimit == null) return
 
     setTimeLeft(timeLimit)
     const timer = window.setInterval(() => {
@@ -191,7 +194,7 @@ export function PuzzleGame({
     }, 1000)
 
     return () => window.clearInterval(timer)
-  }, [handleTimeout, puzzle?.id, revealed, timeLimit])
+  }, [handleTimeout, isUntimed, puzzle?.id, revealed, timeLimit])
 
   const handleNext = useCallback(() => {
     if (stopSpeechOnLeave) stopVoice()
@@ -214,7 +217,7 @@ export function PuzzleGame({
       setShowHint(false)
       setRevealed(false)
       setAnsweredPuzzle(null)
-      setTimeLeft(timeLimit)
+      setTimeLeft(timeLimit ?? 0)
       return
     }
 
@@ -224,7 +227,7 @@ export function PuzzleGame({
       setShowHint(false)
       setRevealed(false)
       setAnsweredPuzzle(null)
-      setTimeLeft(timeLimit)
+      setTimeLeft(timeLimit ?? 0)
       return
     }
 
@@ -322,8 +325,8 @@ export function PuzzleGame({
     selected != null ? displayPuzzle.options[selected] : null
   const correctAnswer = displayPuzzle.options[displayPuzzle.correctIndex]
   const alreadyReported = reported || reportedQuestions.includes(displayPuzzle.id)
-  const timerPct = (timeLeft / timeLimit) * 100
-  const timerLow = timeLeft <= 10 && !revealed
+  const timerPct = !isUntimed && timeLimit != null ? (timeLeft / timeLimit) * 100 : 0
+  const timerLow = !isUntimed && timeLeft <= 10 && !revealed
 
   return (
     <div className="screen game-screen">
@@ -335,19 +338,25 @@ export function PuzzleGame({
           {mode === 'daily' ? 'Mixed' : DIFFICULTY_LABELS[difficulty]}
         </span>
         <span className="badge badge-muted">{SESSION_MODE_CONFIG[mode].label}</span>
-        <span
-          className={`timer-badge ${timerLow ? 'timer-low' : ''} ${revealed ? 'timer-paused' : ''}`}
-          aria-label={`${timeLeft} seconds remaining`}
-        >
-          ⏱ {timeLeft}s
-        </span>
+        {isUntimed ? (
+          <span className="timer-badge timer-paused" aria-label="Untimed mode">
+            Untimed
+          </span>
+        ) : (
+          <span
+            className={`timer-badge ${timerLow ? 'timer-low' : ''} ${revealed ? 'timer-paused' : ''}`}
+            aria-label={`${timeLeft} seconds remaining`}
+          >
+            ⏱ {timeLeft}s
+          </span>
+        )}
         <span className="game-counter" aria-label={`Question ${sessionNum} of ${sessionTotal}`}>
           {sessionNum} / {isEndless ? '∞' : sessionTotal}
         </span>
         {streak > 0 && <span className="streak">Streak: {streak}</span>}
       </div>
 
-      {!revealed && (
+      {!revealed && !isUntimed && (
         <div className="timer-bar" aria-hidden="true">
           <div className="timer-bar-fill" style={{ width: `${timerPct}%` }} />
         </div>
@@ -369,47 +378,18 @@ export function PuzzleGame({
           </p>
         )}
 
-        <div className="options-grid" role="listbox" aria-labelledby="question-text">
-          {displayPuzzle.options.map((option, i) => {
-            let className = 'option-btn'
-            let statusLabel = ''
-            if (revealed) {
-              if (i === displayPuzzle.correctIndex) {
-                className += ' correct'
-                statusLabel = 'Correct answer'
-              } else if (i === selected) {
-                className += ' wrong'
-                statusLabel = 'Your answer — incorrect'
-              }
-            } else if (selected === i) {
-              className += ' selected'
-            }
-
-            return (
-              <button
-                key={`${displayPuzzle.id}-${i}`}
-                type="button"
-                className={className}
-                onClick={() => handleSelect(i)}
-                disabled={revealed}
-                role="option"
-                aria-selected={selected === i}
-                aria-label={`${String.fromCharCode(65 + i)}. ${option}${statusLabel ? `. ${statusLabel}` : ''}`}
-              >
-                <span className="option-letter" aria-hidden="true">
-                  {String.fromCharCode(65 + i)}
-                </span>
-                <span className="option-text">{option}</span>
-                {revealed && i === displayPuzzle.correctIndex && (
-                  <span className="result-icon correct-icon" aria-hidden="true">✓</span>
-                )}
-                {revealed && i === selected && !isCorrect && (
-                  <span className="result-icon wrong-icon" aria-hidden="true">✕</span>
-                )}
-              </button>
-            )
-          })}
-        </div>
+        <AnswerOptions
+          groupName={`classic-q-${displayPuzzle.id}`}
+          labelledBy="question-text"
+          options={displayPuzzle.options}
+          selectedIndex={selected}
+          disabled={revealed}
+          correctIndex={displayPuzzle.correctIndex}
+          revealed={revealed}
+          onSelect={(i) => {
+            void handleSelect(i)
+          }}
+        />
 
         {revealed && (
           <div

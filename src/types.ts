@@ -33,6 +33,16 @@ export interface AppSettings {
   vibrationEnabled: boolean
   textSize: TextSize
   reduceAnimations: boolean
+  /**
+   * When true, classic and story questions have no countdown.
+   * Takes precedence over `extendedTime`. Default remains timed.
+   */
+  untimedMode: boolean
+  /**
+   * When true (and untimedMode is false), per-question limits are extended.
+   * Default remains standard difficulty timers.
+   */
+  extendedTime: boolean
   voiceExplanationsEnabled: boolean
   voiceAutoPlay: boolean
   /** Optional persona preset; does not create a separate TTS engine. */
@@ -141,6 +151,8 @@ export const DEFAULT_SETTINGS: AppSettings = {
   vibrationEnabled: true,
   textSize: 'normal',
   reduceAnimations: false,
+  untimedMode: false,
+  extendedTime: false,
   voiceExplanationsEnabled: false,
   voiceAutoPlay: false,
   voicePersona: 'night-guardian',

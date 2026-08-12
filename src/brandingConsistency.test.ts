@@ -131,6 +131,11 @@ describe('MindForge branding and package consistency', () => {
     expect(manifest).toContain('"name": "MindForge"')
     expect(manifest).toContain('"short_name": "MindForge"')
     expect(indexHtml).toContain('MindForge')
+    expect(indexHtml).toContain('og:title')
+    expect(indexHtml).toContain('og:description')
+    expect(indexHtml).toContain('og:image')
+    expect(indexHtml).toContain('twitter:card')
+    expect(indexHtml).toContain('rel="canonical"')
     expect(indexHtml).not.toContain(FORBIDDEN_USER_FACING_BRAND)
 
     expect(getTestVoicePhrase('system')).toContain('MindForge learning guide')
