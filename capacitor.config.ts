@@ -1,8 +1,8 @@
 import type { CapacitorConfig } from '@capacitor/cli'
 
 const config: CapacitorConfig = {
-  appId: 'com.shakhzodrafikov.mindforge',
-  appName: 'MindForge',
+  appId: 'com.shakhzodrafikov.kith',
+  appName: 'Kith',
   webDir: 'dist',
   android: {
     allowMixedContent: false,
@@ -11,7 +11,7 @@ const config: CapacitorConfig = {
     SplashScreen: {
       launchAutoHide: true,
       launchShowDuration: 2000,
-      backgroundColor: '#0f1117',
+      backgroundColor: '#f3faf5',
       showSpinner: false,
     },
   },

@@ -1,20 +1,24 @@
-# MindForge
+# Kith
 
-Educational puzzle and trivia app for general audiences — 100 free questions across Math, Science, History, and Computer Science.
+Neighborhood food delivery with minute-accurate arrival and live kitchen timelines.
 
-> **Not ready for store submission yet.** See [Pre-publish checklist](#pre-publish-checklist) below.
+> On your door. On the minute.
+
+## Why Kith
+
+Uber-style delivery apps hide behind vague ETAs. Kith is built around three promises:
+
+- **Exact minutes** — every kitchen publishes a real arrival minute, not a 25–40 window
+- **Live kitchen timeline** — queued → prepping → plated → out → nearby → delivered
+- **Fair drop breakdown** — courier pay share is visible before you place the order
 
 ## Features
 
-- 100 puzzles in 4 categories with Easy / Medium / Hard progression
-- Session modes: Quick (5), Standard (10), Challenge (20), Full, Endless, Daily Challenge
-- Number Kingdom story adventure prototype with XP and boss battles
-- Results screen with accuracy, streak, time, retry incorrect, Review Mistakes, share score
-- Hints, explanations, report-question button
-- Settings: sound, vibration, large text, reduce animations, voice personas, export/import progress
-- In-app Privacy Policy, Terms, About, Contact
-- Offline-capable mobile build via Capacitor
-- No ads, no account required
+- Marketing landing with brand-first hero
+- Nearby kitchen discovery with cuisine filters and search
+- Restaurant menus with prep-aware items
+- Bag / checkout with tip controls and fair-pay summary
+- Compressed live tracking demo for walkthroughs
 
 ## Development
 
@@ -30,53 +34,11 @@ npm run build
 npm run preview
 ```
 
-## Android (Capacitor)
+## Tests
 
 ```bash
-npm run cap:sync          # build web + sync to android/
-npm run cap:android       # open Android Studio
+npm test
 ```
-
-Package ID: `com.shakhzodrafikov.mindforge`
-
-## Deploy web version
-
-Deploy the `dist/` folder to Vercel, Netlify, or GitHub Pages. Public legal URLs:
-
-- `/privacy`
-- `/terms`
-- `/about`
-- `/support`
-
-```bash
-npm run deploy:vercel
-```
-
-Privacy policy URL (after deploy): `https://mindforge-beta-five.vercel.app/privacy`
-
-## Pre-publish checklist
-
-| Item | Status |
-|------|--------|
-| App rebrand to MindForge | Done |
-| Android application ID `com.shakhzodrafikov.mindforge` | Done |
-| Remove age 7–35 marketing | Done |
-| Privacy policy (in-app + web) | Done |
-| Terms, About, Contact | Done |
-| Session modes + results screen | Done |
-| Settings screen | Done |
-| Answer feedback improvements | Done |
-| Export/import progress | Done |
-| Report incorrect question | Done |
-| Android back button | Done |
-| Haptics + sound toggles | Done |
-| Manual review of all 100 questions | Done |
-| Real-device Android QA (Samsung) | Done |
-| Support email configured | Done — shakhzodrafikov915@gmail.com |
-| Custom app icon + splash (store quality) | Done — Knowledge Cube icons/splash installed (physical Android QA pending) |
-| Play Store feature graphic + 512 icon | Done — see `public/feature-graphic-1024x500.png` and `public/play-icon-512.png` |
-| Play Store / App Store screenshots | **Not done** |
-| Release signing keystore | **Not done** |
 
 ## Support
 
