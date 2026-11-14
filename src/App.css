@@ -332,11 +332,14 @@
   margin: 1.25rem 0 1.5rem;
   max-width: 36rem;
   animation: rise-in 500ms ease both;
+  overflow: visible;
 }
 
 .section-head h1 {
   font-size: clamp(1.8rem, 4vw, 2.6rem);
   margin-bottom: 0.55rem;
+  padding-block: 0.08em;
+  line-height: 1.15;
 }
 
 .section-head p,
@@ -407,7 +410,7 @@
   gap: 1rem;
   text-align: left;
   border: 1px solid var(--line);
-  background: rgba(255, 255, 255, 0.62);
+  background: rgba(255, 255, 255, 0.78);
   border-radius: calc(var(--radius) + 2px);
   padding: 0.85rem;
   color: inherit;
@@ -425,19 +428,20 @@
   min-height: 102px;
   overflow: hidden;
   background:
-    radial-gradient(circle at 30% 30%, color-mix(in srgb, var(--kitchen-accent) 70%, white), transparent 55%),
-    linear-gradient(160deg, #183528, #3d6a52 55%, color-mix(in srgb, var(--kitchen-accent) 55%, #20362b));
+    radial-gradient(circle at 28% 28%, var(--kitchen-accent), transparent 42%),
+    radial-gradient(circle at 78% 70%, #102018, transparent 48%),
+    linear-gradient(160deg, #0d2418 0%, #1f4a35 45%, #243028 100%);
 }
 
 .kitchen__orb {
   position: absolute;
-  width: 54px;
-  height: 54px;
+  width: 58px;
+  height: 58px;
   border-radius: 50%;
-  right: 12px;
-  bottom: 14px;
-  background: radial-gradient(circle at 35% 30%, #fff6ea, color-mix(in srgb, var(--kitchen-accent) 80%, #111));
-  opacity: 0.9;
+  right: 10px;
+  bottom: 28px;
+  background: radial-gradient(circle at 35% 30%, #fff8ef, color-mix(in srgb, var(--kitchen-accent) 90%, #1a1208));
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.28);
 }
 
 .kitchen__dish {
@@ -445,10 +449,11 @@
   left: 10px;
   bottom: 10px;
   right: 10px;
-  color: rgba(247, 255, 249, 0.92);
-  font-size: 0.72rem;
-  font-weight: 600;
+  color: #f7fff9;
+  font-size: 0.74rem;
+  font-weight: 700;
   line-height: 1.2;
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.45);
 }
 
 .kitchen__meta {
@@ -647,7 +652,11 @@
 .tracking,
 .discover,
 .restaurant {
-  padding-bottom: 1rem;
+  padding-bottom: 2.5rem;
+}
+
+.checkout .btn--block {
+  margin-bottom: 0.75rem;
 }
 
 .field {
@@ -871,19 +880,44 @@
 .tracking__rider {
   --rider-progress: 0.15;
   position: absolute;
-  top: 46%;
+  top: 44%;
   left: calc(12% + (76% * var(--rider-progress)));
-  width: 16px;
-  height: 16px;
-  margin-left: -8px;
-  border-radius: 50%;
+  width: 22px;
+  height: 14px;
+  margin-left: -11px;
+  border-radius: 8px 10px 6px 6px;
   background: var(--ink);
   box-shadow: 0 0 0 5px rgba(16, 32, 24, 0.12);
   transition: left 700ms linear;
 }
 
+.tracking__rider::before,
+.tracking__rider::after {
+  content: '';
+  position: absolute;
+  bottom: -4px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  border: 2px solid var(--ink);
+  background: var(--paper);
+}
+
+.tracking__rider::before {
+  left: 1px;
+}
+
+.tracking__rider::after {
+  right: 1px;
+}
+
 .tracking__rider.is-done {
   background: var(--ok);
+}
+
+.tracking__rider.is-done::before,
+.tracking__rider.is-done::after {
+  border-color: var(--ok);
 }
 
 .tracking__summary {

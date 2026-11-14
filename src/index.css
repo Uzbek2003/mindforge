@@ -66,8 +66,9 @@ h2,
 h3 {
   font-family: var(--font-display);
   letter-spacing: -0.03em;
-  line-height: 1.05;
+  line-height: 1.12;
   margin: 0;
+  overflow: visible;
 }
 
 p {
